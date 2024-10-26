@@ -1,0 +1,1 @@
+sudo avrdude -p attiny25 -C ~/avrdude_spi.conf -c pi_2 -v -U flash:w:blink.hex:i
