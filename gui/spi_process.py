@@ -1,7 +1,8 @@
 from multiprocessing import Process, Queue
 import spidev
 from queue import Empty
-from typing import Iterable, Mapping, Callable, Any
+from typing import Iterable, Mapping, Callable, Any, Annotated
+from kivy.logger import Logger
 
 from messages import MESSAGES
 
@@ -18,10 +19,9 @@ class SpiProcess(Process):
         group: None = None,
         target: Callable[..., object] | None = None,
         name: str | None = None,
-        args: Iterable[Any] = ...,
-        kwargs: Mapping[str, Any] = ...,
-        *,
         daemon: bool | None = None,
+        *args: Iterable[Any],
+        **kwargs: Mapping[str, Any],
     ) -> None:
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
         self.q = q
@@ -48,20 +48,23 @@ class SpiProcess(Process):
                 self.response_q.put(res)
                 
         except FileNotFoundError:
-            print("SPI Device not found")
+            Logger.info("SPI Device not found")
         except PermissionError:
-            print("Permission denied")
+            Logger.info("Permission denied")
         except Empty:
-            print(f"No heartbeat or messages received within {self.timeout} seconds")
+            Logger.info(f"No heartbeat or messages received within {self.timeout} seconds")
         except TimeoutError:
-            print("Timeout while sending SPI message")
+            Logger.info("Timeout while sending SPI message")
+        except KeyboardInterrupt:
+            Logger.info("Keyboard interrupt detected. Exiting")
         except Exception as e:
-            print(f"General Exception: {e}")
+            Logger.info(f"General Exception: {e}")
         finally:
             spi.close()
             with self.init_failed.get_lock():
                 self.init_failed.value = 1  # communicates that SPI has failed or exited
             self.init_e.set()  # TODO see if setting this every time breaks something
+            Logger.info(f"SPI Process on bus {self.spi_bus} closed")
 
     def join(self, timeout: float | None = None) -> None:
         self.running = False
