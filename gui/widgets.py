@@ -79,12 +79,19 @@ class SPIScreenManager(ScreenManager):
     def stop_spi(self):
         # Called when kivy window is closed to stop SPI comms
         if self.spi is not None:
+            self.q.put(MESSAGES["terminate"])
             self.spi.join()
 
     def transition_to_init(self):
         self.current = "init"
-        self.init_event.clear()
         self.init_screen.start_initialization()
+
+        # clear queues for next run
+        while not self.q.empty():
+            self.q.get()
+        while not self.response_q.empty():
+            self.response_q.get()
+
         self.spi = SpiProcess(self.q, self.response_q, self.init_event, self.spi_failed, 1)
         self.spi.start()
 
@@ -106,20 +113,21 @@ class InitScreen(Screen):
 
     def start_initialization(self):
         self.check_init = Clock.schedule_interval(self.check_spi,0.5)
+        with self.spi_failed.get_lock():
+            self.init_event.clear()
+            self.spi_failed.value = 0
 
     def check_spi(self, dt):
         # exit early if event isn't set yet
         if not self.init_event.is_set():
             return
 
-        # clear event and cancel initialization check
-        self.init_event.clear()
+        # cancel initialization check
         self.check_init.cancel()
 
         # go to failure screen if SPI process exited
         with self.spi_failed.get_lock():
             if self.spi_failed.value:
-                self.spi_failed.value = 0
                 self.manager.transition_to_failure()
                 return
             
@@ -158,7 +166,7 @@ class ControlInterface(Screen):
         self.program_button.bind(on_press=self.program_button_action)
         self.ids["float_layout"].add_widget(self.program_button)
 
-    def program_button_action(self):
+    def program_button_action(self, dt):
         self.check_spi_interval.cancel()
         self.manager.transition_to_failure(True)
         self.program_button.disabled = True
@@ -175,7 +183,6 @@ class ControlInterface(Screen):
         with self.spi_failed.get_lock():
             if self.spi_failed.value:
                 self.check_spi_interval.cancel()
-                self.spi_failed.value = 0
                 self.manager.transition_to_failure()
                 return
         # otherwise, send heartbeat

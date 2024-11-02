@@ -43,13 +43,10 @@ class RobotGui(App):
         self.app_layout = FloatLayout()
         self.rw = SPIScreenManager(transition=NoTransition())
         self.exit_button = Button(text="Quit", size_hint=(0.1, 0.1), pos_hint={"right":1, "top":1})
-        self.exit_button.bind(on_press=self.quit_button)
+        self.exit_button.bind(on_press=lambda dt: self.stop())
         self.app_layout.add_widget(self.rw)
         self.app_layout.add_widget(self.exit_button)
         return self.app_layout
-
-    def quit_button(self):
-        self.stop()
 
     def on_stop(self):
         self.rw.stop_spi()
@@ -58,7 +55,8 @@ class RobotGui(App):
     def run(self):
         try:
             super().run()
-        except: # TODO for now have general exception
+        except Exception as e: # TODO for now have general exception
+            print(e)
             self._stop()
     
 if __name__ == '__main__':

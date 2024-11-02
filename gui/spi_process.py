@@ -44,6 +44,8 @@ class SpiProcess(Process):
                 msg = self.q.get(timeout=self.timeout)
                 if msg == MESSAGES["hb"]:  # TODO decide on heartbeat value
                     continue
+                if msg == MESSAGES["terminate"]:
+                    break
                 res = spi.xfer2(msg, spi.max_speed_hz, 100) # TODO see if delay works
                 self.response_q.put(res)
                 
