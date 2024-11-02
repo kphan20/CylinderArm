@@ -88,12 +88,13 @@ class SPIScreenManager(ScreenManager):
         self.spi = SpiProcess(self.q, self.response_q, self.init_event, self.spi_failed, 1)
         self.spi.start()
 
-    def transition_to_failure(self):
+    def transition_to_failure(self, is_programming=False):
         self.current = "failure"
         self.stop_spi()
-        self.failure_screen.restart_btn.disabled = False
+        self.failure_screen.start_initialization(is_programming)
 
     def transition_to_controls(self):
+        self.control_screen.start_initialization()
         self.current = "control"
 
 
@@ -134,7 +135,14 @@ class FailureScreen(Screen):
     def restart_spi(self, dt):
         self.restart_btn.disabled = True
         self.manager.transition_to_init()
-
+    
+    def start_initialization(self, is_programming):
+        self.restart_btn.disabled = False
+        label = self.ids['info_text']
+        if is_programming:
+            label.text = 'Take this time to program your microcontrollers.'
+        else:
+            label.text = 'SPI Process has exited unexpectedly. Check the hardware and press the button below to try to restart.'
 
 class ControlInterface(Screen):
     def __init__(self, spi_failed, q: Queue, **kw):
@@ -142,12 +150,18 @@ class ControlInterface(Screen):
         self.spi_failed = spi_failed
         self.q = q
 
-        # SPI process has a timeout, so Kivy client has to send heartbeat
-        self.check_spi_interval = Clock.schedule_interval(self.check_spi, 1)
-
-        self.layout: BoxLayout = self.ids["layout"]
+        self.layout: BoxLayout = self.ids["box_layout"]
         self.layout.add_widget(RobotSwitch(name="TestSwitch", delta=ThreadingDict()))
         self.layout.add_widget(RobotSlider("TestSlider", self, delta=ThreadingDict(), min=0, max=249, step=1))
+
+        self.program_button = Button(text="Program", size_hint=(0.1, 0.1), pos_hint={"left":1, "top":1})
+        self.program_button.bind(on_press=self.program_button_action)
+        self.ids["float_layout"].add_widget(self.program_button)
+
+    def program_button_action(self):
+        self.check_spi_interval.cancel()
+        self.manager.transition_to_failure(True)
+        self.program_button.disabled = True
 
     def send_message(self, val):
         if val == 0:
@@ -160,6 +174,7 @@ class ControlInterface(Screen):
         # check to see if SPI has encountered errors and/or exited early
         with self.spi_failed.get_lock():
             if self.spi_failed.value:
+                self.check_spi_interval.cancel()
                 self.spi_failed.value = 0
                 self.manager.transition_to_failure()
                 return
@@ -173,3 +188,8 @@ class ControlInterface(Screen):
 
         for interface in config:
             pass  # TODO add logic to add widgets to this interface
+    
+    def start_initialization(self):
+        # SPI process has a timeout, so Kivy client has to send heartbeat
+        self.check_spi_interval = Clock.schedule_interval(self.check_spi, 1)
+        self.program_button.disabled = False

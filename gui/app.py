@@ -24,17 +24,19 @@ Builder.load_string("""
     BoxLayout:
         orientation: 'vertical'
         Label:
+            id: info_text
             text: 'SPI Process has exited unexpectedly. Check the hardware and press the button below to try to restart.'
         Button:
             text: 'Restart'
             id: restart_button
-        
 <ControlInterface>:
-    BoxLayout:
-        orientation: 'vertical'
-        id: layout
-        Label:
-            text: 'Loaded!'
+    FloatLayout:
+        id: float_layout
+        BoxLayout:
+            orientation: 'vertical'
+            id: box_layout
+            Label:
+                text: 'Gui Controls'
 """) # TODO maybe move this to a file
 class RobotGui(App):
     def build(self):
