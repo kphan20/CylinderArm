@@ -14,15 +14,10 @@ static volatile uint8_t changeCounter = 0;
 static volatile uint8_t dutyCycle = 0;
 static volatile uint8_t storedData = 0;
 static volatile uint8_t transferInProgress = FALSE;
+const uint8_t MAX_DUTY_CYCLE = 249;
 
 ISR(TIMER1_COMPB_vect) {
-    changeCounter += 1;
-    if (changeCounter == 250) {
-        changeCounter = 0;
-        dutyCycle += 5;
-        if (dutyCycle > 249) dutyCycle = 0;
-        OCR1B = dutyCycle;
-    }
+    OCR1B = dutyCycle;
 }
 
 ISR(USI_START_vect) {
@@ -36,7 +31,8 @@ ISR(USI_OVF_vect) {
     // clearing interrupt flags
     USISR |= (1<<USIOIF);
     transferInProgress = FALSE;
-    storedData = USIDR;
+    dutyCycle = USIDR;
+    if (dutyCycle > MAX_DUTY_CYCLE) dutyCycle = MAX_DUTY_CYCLE;
 }
 
 int spiWrite(uint8_t data) {
@@ -82,7 +78,7 @@ int main() {
     sei();
 
     while (1) {
-        spiWrite(1);
+        //spiWrite(1);
         _delay_ms(100);
     }
     return 0;
