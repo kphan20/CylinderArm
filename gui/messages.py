@@ -1,3 +1,4 @@
 MESSAGES = {
-    'hb': -1
+    'hb': -1,
+    'terminate': -2
 }
