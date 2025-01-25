@@ -28,11 +28,11 @@ class TouchScreenNode(Node):
 
     def notification_callback(self, msg: SPISend):
         # upon hardware beginning to communicate, notify party trying to initiate contact
-        if msg.message == MESSAGES['ready']:
+        if msg.message[0] == MESSAGES['ready']:
             self.init_event.set()
         
         # set failure upon hardware failure
-        elif msg.message == MESSAGES['unavailable']:
+        elif msg.message[0] == MESSAGES['unavailable']:
             self.spi_failed.set(1) # communicates that SPI has failed or exited
 
     def send_message(self, msg):

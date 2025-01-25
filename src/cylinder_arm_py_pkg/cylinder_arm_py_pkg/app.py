@@ -59,6 +59,8 @@ class RobotGui(App):
     def run(self):
         try:
             super().run()
+        except KeyboardInterrupt:
+            pass
         except Exception as e: # TODO for now have general exception
             print(e)
             self._stop()

@@ -10,6 +10,7 @@ from queue import Queue
 from threading import Event, Lock
 from functools import partial
 
+from rclpy import spin_once, ok
 from .messages import MESSAGES
 from .robot_threading import ThreadingDict
 
@@ -93,6 +94,8 @@ class SPIScreenManager(ScreenManager):
         self.add_widget(self.control_screen)
         self.transition_to_init()
 
+        self.spin_check = Clock.schedule_interval(self.spin_node,0.5)
+
     def send_spi_message(self, data):
         msg = SPISend()
         msg.spi_bus = self.spi_bus
@@ -116,6 +119,10 @@ class SPIScreenManager(ScreenManager):
     def transition_to_controls(self):
         self.control_screen.start_initialization()
         self.current = "control"
+    
+    def spin_node(self, _):
+        if ok():
+            spin_once(self.ros_node, timeout_sec=0.1)
 
 
 class InitScreen(Screen):
