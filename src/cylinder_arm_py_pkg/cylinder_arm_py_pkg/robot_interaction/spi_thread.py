@@ -67,6 +67,13 @@ class SPIThread(Thread):
             notif.message = [message_code]
             self.ros_node.send_notification(notif)
 
+    def custom_spin(self):
+        try:
+            while self.running and self.executor._context.ok() and not self.executor._is_shutdown:
+                self.executor.spin_once(0.2)
+        except Exception as e:
+            pass
+
     def run(self):
         spi = spidev.SpiDev() if self.hw_available else None
         
@@ -77,7 +84,7 @@ class SPIThread(Thread):
                 spi.mode = 0
 
             self.executor.add_node(self.ros_node)
-            spin_thread = Thread(target=self.executor.spin)
+            spin_thread = Thread(target=self.custom_spin)
             spin_thread.start()
 
             # self.init_e.set()  # trigger event if SPI didn't fail to setup
@@ -113,12 +120,12 @@ class SPIThread(Thread):
         finally:
             if spi is not None:
                 spi.close()
-            spin_thread.join()
             self.send_notification(MESSAGES["unavailable"])
             self.running = False
-            self.ros_node.get_logger().info(f"SPI Process on bus {self.spi_bus} closed")
+            spin_thread.join()
             self.ros_node.destroy_node()
             self.executor.shutdown()
+            self.ros_node.get_logger().info(f"SPI Process on bus {self.spi_bus} closed")
 
     def join(self, timeout: float | None = None) -> None:
         self.running = False

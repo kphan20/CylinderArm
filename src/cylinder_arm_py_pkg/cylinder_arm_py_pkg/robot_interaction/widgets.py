@@ -31,15 +31,15 @@ class RobotValue:
             self.value = val
 
 class RobotSlider(Slider):
-    def __init__(self, name, control, delta:ThreadingDict, **kwargs):
+    def __init__(self, name, send_message, delta: ThreadingDict, **kwargs):
         super().__init__(**kwargs)
         self.name = name
         self.delta = delta
-        self.control = control
+        self.send_message = send_message
 
     def on_value(self, w, touch):
         self.delta.update(self.name, self.value)
-        self.control.send_message(int(self.value))
+        self.send_message(int(self.value))
 
 
 class RobotSwitch(ToggleButton):
@@ -113,7 +113,6 @@ class SPIScreenManager(ScreenManager):
 
     def transition_to_failure(self, is_programming=False):
         self.current = "failure"
-        self.stop_spi()
         self.failure_screen.start_initialization(is_programming)
 
     def transition_to_controls(self):
@@ -131,17 +130,30 @@ class InitScreen(Screen):
         self.init_event = init_event
         self.spi_failed = spi_failed
         self.start_hardware = start_hardware
+        self.hw_req_future = None
+
+    def hw_callback(self, future):
+        try:
+            response = future.result()
+            print(f"Service response: {response}")
+        except Exception as e:
+            print(f"Service call failed: {e}")
+        finally:
+            self.hw_req_future = None
 
     def start_initialization(self):
         self.check_init = Clock.schedule_interval(self.check_spi,0.5)
-        self.start_hardware()
         self.init_event.clear()
         self.spi_failed.set(0)
+        self.hw_req_future = self.start_hardware()
+        if self.hw_req_future is not None:
+            self.hw_req_future.add_done_callback(self.hw_callback)
 
     def check_spi(self, dt):
         # exit early if event isn't set yet
         if not self.init_event.is_set():
-            self.start_hardware()
+            if self.hw_req_future is None:
+                self.hw_req_future = self.start_hardware()
             return
 
         # cancel initialization check
@@ -181,7 +193,7 @@ class ControlInterface(Screen):
 
         self.layout: BoxLayout = self.ids["box_layout"]
         self.layout.add_widget(RobotSwitch(name="TestSwitch", delta=ThreadingDict()))
-        self.layout.add_widget(RobotSlider("TestSlider", self, delta=ThreadingDict(), min=0, max=249, step=1))
+        self.layout.add_widget(RobotSlider("TestSlider", partial(self.send_message), delta=ThreadingDict(), min=0, max=249, step=1))
 
         self.program_button = Button(text="Program", size_hint=(0.1, 0.1), pos_hint={"left":1, "top":1})
         self.program_button.bind(on_press=self.program_button_action)

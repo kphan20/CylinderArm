@@ -13,9 +13,6 @@ class TouchScreenNode(Node):
         self.spi_failed = spi_failed
 
         self.hardware_client = self.create_client(HardwareStartReq, 'initiate_hardware')
-        # while not self.hardware_client.wait_for_service(1):
-        #     self.get_logger().info('Hardware service not available, waiting...')
-        
         self.hardware_req = HardwareStartReq.Request()
         self.hardware_req.spi_bus = spi_bus
 
@@ -37,13 +34,3 @@ class TouchScreenNode(Node):
 
     def send_message(self, msg):
         pass
-
-# def main():
-#     rclpy.init()
-#     node = TouchScreenNode()
-#     rclpy.spin(node)
-#     node.destroy_node()
-#     rclpy.shutdown()
-
-# if __name__ == "__main__":
-#     main()

@@ -3,7 +3,7 @@ from cylinder_arm_interfaces.msg import SPISend
 from cylinder_arm_py_pkg.robot_interaction.spi_thread import SPIThread
 from cylinder_arm_py_pkg.robot_interaction.messages import MESSAGES
 
-from rclpy import init, spin, shutdown, ok, spin_once
+from rclpy import init, spin, shutdown, ok
 from rclpy.node import Node
 from rclpy.subscription import Subscription
 from rclpy.publisher import Publisher
@@ -28,11 +28,11 @@ class HardwareService(Node):
 
         # bool marks if heartbeat response was resceived, int is number of failures in a row
         self.hb_states: Dict[str, Tuple[bool, int]] = dict()
-        self.heartbeat_timer = self.create_timer(1, self.send_heartbeats)
+        self.heartbeat_interval = 1
+        self.heartbeat_timer = self.create_timer(self.heartbeat_interval, self.send_heartbeats)
 
     def send_heartbeats(self):
         for interface, publisher in self.hb_publishers.items():
-
             # handle heartbeat failures
             hb_received, hb_count = self.hb_states[interface]
             hb_count = 0 if hb_received else hb_count + 1
@@ -56,21 +56,20 @@ class HardwareService(Node):
         
         # if thread returns error, clean up failed thread
         self.remove_interface(interface)
+
         if interface in self.notification_subs:
             self.destroy_subscription(self.notification_subs[interface])
             del self.notification_subs[interface]
         
         if interface in self.hb_publishers:
             self.destroy_publisher(self.hb_publishers[interface])
-            del self.hb_publishers[interface]   
+            del self.hb_publishers[interface]
 
     def hardware_start_req(self, req, res):
         interface_name = f"spi{req.spi_bus}"
-
         no_hw = self.get_parameter("NO_HARDWARE").get_parameter_value().bool_value
         # if thread has not been started yet, set up all communications
         if interface_name not in self.thread_dict:
-            self.get_logger().info("Creating SPI Thread")
             t = SPIThread(req.spi_bus, no_hw, daemon=True)
             t.start()
             self.thread_dict[interface_name] = t
@@ -88,6 +87,7 @@ class HardwareService(Node):
             return
         self.thread_dict[interface_name].join()
         del self.thread_dict[interface_name]
+        del self.hb_states[interface_name]
 
     def cleanup(self):
         self.heartbeat_timer.cancel()
