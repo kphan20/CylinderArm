@@ -51,8 +51,8 @@ class RobotGui(App):
         return self.app_layout
 
     def on_stop(self):
-        self.rw.stop_spi()
         if rclpy.ok():
+            self.rw.stop_spi()
             rclpy.shutdown()
         return super().on_stop()
     

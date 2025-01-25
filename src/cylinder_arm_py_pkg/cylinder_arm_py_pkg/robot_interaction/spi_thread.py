@@ -64,7 +64,7 @@ class SPIThread(Thread):
         if ok():
             notif = SPISend()
             notif.spi_bus = self.spi_bus
-            notif.message = [message_code]
+            notif.status_message = message_code
             self.ros_node.send_notification(notif)
 
     def custom_spin(self):
@@ -93,14 +93,13 @@ class SPIThread(Thread):
                 msg_data, topic, spi_bus = msg.message, msg.return_topic, msg.spi_bus
                 if spi_bus != self.spi_bus:
                     continue # TODO return wrong spi bus message
-                if len(msg_data) == 1:
-                    if msg_data[0] == MESSAGES["hb"]:
-                        self.send_notification(MESSAGES["ready"]) # inform manager things are okay
-                        continue
-                    if msg_data[0] == MESSAGES["terminate"]:
-                        break
+                if status_msg == MESSAGES["hb"]:
+                    self.send_notification(MESSAGES["ready"]) # inform manager things are okay
+                    continue
+                elif status_msg == MESSAGES["terminate"]:
+                    break
                 if spi is not None:
-                    res = spi.xfer2(msg, spi.max_speed_hz, 100) # TODO see if delay works
+                    res = spi.xfer2(msg_data, spi.max_speed_hz, 100) # TODO see if delay works
                     self.ros_node.send_message(res, topic)
                 
         except FileNotFoundError:

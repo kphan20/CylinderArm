@@ -96,15 +96,16 @@ class SPIScreenManager(ScreenManager):
 
         self.spin_check = Clock.schedule_interval(self.spin_node,0.5)
 
-    def send_spi_message(self, data):
+    def send_spi_message(self, data=[], status=MESSAGES["ready"]):
         msg = SPISend()
         msg.spi_bus = self.spi_bus
         msg.message = data
+        msg.status_message = status
         self.ros_node.send_message(msg)
 
     def stop_spi(self):
         # Called when kivy window is closed to stop SPI comms
-        self.send_spi_message([MESSAGES["terminate"]])
+        self.send_spi_message(status=MESSAGES["terminate"])
         self.ros_node.destroy_node()
 
     def transition_to_init(self):
@@ -209,7 +210,7 @@ class ControlInterface(Screen):
             msg = [0]
         else:
             msg = list(val.to_bytes((val.bit_length() + 7)//8))
-        self.send_spi_message(msg)
+        self.send_spi_message(data=msg)
 
     def check_spi(self, _):
         # check to see if SPI has encountered errors and/or exited early

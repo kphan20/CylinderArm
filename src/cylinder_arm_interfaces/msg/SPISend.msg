@@ -1,3 +1,4 @@
 uint8 spi_bus
 string return_topic
-int8[] message
+uint8[] message
+int8 status_message

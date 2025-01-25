@@ -45,12 +45,12 @@ class HardwareService(Node):
             # send heartbeat
             msg = SPISend() # TODO should I cache messages?
             msg.spi_bus = int(interface[3:])
-            msg.message = [MESSAGES['hb']]
+            msg.status_message = MESSAGES['hb']
             publisher.publish(msg)
 
     def notification_callback(self, msg):
         interface = f"spi{msg.spi_bus}"
-        if msg.message[0] == MESSAGES["ready"]:
+        if msg.status_message == MESSAGES["ready"]:
             self.hb_states[interface] = (True, 0) # TODO do I need a lock?
             return
         
