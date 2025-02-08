@@ -21,9 +21,10 @@ class SPIHandler(Node):
         self.sub_topic = sub_topic
         self.q = q
 
-    def send_message(self, response, topic: str):
+    def send_message(self, response, topic: str, spi_bus: int):
         msg = SPISend()
         msg.message = response
+        msg.spi_bus = spi_bus
 
         publisher = self.pub_map.get(topic, self.create_publisher(SPISend, topic, 10))
         publisher.publish(msg)
@@ -90,8 +91,10 @@ class SPIThread(Thread):
             # self.init_e.set()  # trigger event if SPI didn't fail to setup
             while self.running and ok():            
                 msg: SPISend = self.q.get(timeout=self.timeout) # TODO see how message bytes are sent and received
-                msg_data, topic, spi_bus = msg.message, msg.return_topic, msg.spi_bus
+                msg_data, topic, spi_bus, status_msg, actuator_id = msg.message, msg.return_topic, msg.spi_bus, msg.status_message, msg.actuator_id
+
                 if spi_bus != self.spi_bus:
+                    self.ros_node.send_message([], topic, self.spi_bus)
                     continue # TODO return wrong spi bus message
                 if status_msg == MESSAGES["hb"]:
                     self.send_notification(MESSAGES["ready"]) # inform manager things are okay
@@ -100,7 +103,10 @@ class SPIThread(Thread):
                     break
                 if spi is not None:
                     res = spi.xfer2(msg_data, spi.max_speed_hz, 100) # TODO see if delay works
-                    self.ros_node.send_message(res, topic)
+                    self.ros_node.send_message(res, topic, spi_bus)
+                else:
+                    self.ros_node.send_message(msg_data, topic, spi_bus)
+                    self.ros_node.get_logger().info(f"Received message {msg}")
                 
         except FileNotFoundError:
             self.ros_node.get_logger().error("SPI Device not found")
