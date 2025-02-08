@@ -1,0 +1,4 @@
+uint8 spi_bus
+---
+string data_topic
+bool success
