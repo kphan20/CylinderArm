@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/components/**",
+                "/home/kphan/esp/v5.4/esp-idf/components/**",
+                "/home/kphan/esp/v5.4/esp-idf/components/freertos/**",
+                "/home/kphan/esp/v5.4/esp-idf/components/driver/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64",
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,40 @@
+menu "Cylinder Arm Configuration"
+    config IS_HUB
+        bool "Select if this is hub device"
+        default "n"
+        help
+            Will choose if the device is a distributed device or the hub one
+    
+    menu "Hub Config"
+        depends on IS_HUB
+
+        config ESPNOW_CHANNEL
+            int "ESPNOW Channel"
+            default 1
+            range 0 14
+            help
+                The channel on which you send and receive ESPNOW data
+
+    endmenu
+
+    menu "Distributed Config"
+        depends on !IS_HUB
+        choice
+            prompt "Choose which sensor type is used"
+            default I2C_SENSOR
+
+        config I2C_SENSOR
+            bool "I2C Sensor (AS5600)"
+
+        config PWM_SENSOR
+            bool "PWM Sensor (Pololu Distance Sensor)"
+
+        endchoice
+    endmenu
+    
+    config DEBUG
+        bool "Enable debug mode"
+        default "y"
+        help
+            When debug is enabled, more information will be available on serial monitor
+endmenu

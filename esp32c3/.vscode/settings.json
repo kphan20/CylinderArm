@@ -1,0 +1,39 @@
+{
+    "files.associations": {
+        "esp_chip_info.h": "c",
+        "task.h": "c",
+        "freertos.h": "c",
+        "i2c_master.h": "c",
+        "pins.h": "c",
+        "esp_mac.h": "c",
+        "freertosconfig.h": "c",
+        "esp_system.h": "c",
+        "stdio.h": "c",
+        "freertosconfig_arch.h": "c",
+        "xtensa_config.h": "c",
+        "motor.h": "c",
+        "stdlib.h": "c",
+        "*.ipp": "c",
+        "variant": "c",
+        "gpio.h": "c",
+        "spi_slave.h": "c",
+        "esp_wifi.h": "c",
+        "queue.h": "c",
+        "esp_log.h": "c",
+        "inttypes.h": "c",
+        "sdkconfig.h": "c"
+    },
+    "idf.pythonInstallPath": "/usr/bin/python",
+    "python.autoComplete.extraPaths": [
+        "/home/kphan/CylinderArm/build/cylinder_arm_py_pkg",
+        "/home/kphan/CylinderArm/install/cylinder_arm_py_pkg/lib/python3.12/site-packages",
+        "/home/kphan/CylinderArm/install/cylinder_arm_interfaces/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/kphan/CylinderArm/build/cylinder_arm_py_pkg",
+        "/home/kphan/CylinderArm/install/cylinder_arm_py_pkg/lib/python3.12/site-packages",
+        "/home/kphan/CylinderArm/install/cylinder_arm_interfaces/lib/python3.12/site-packages",
+        "/opt/ros/jazzy/lib/python3.12/site-packages"
+    ]
+}
