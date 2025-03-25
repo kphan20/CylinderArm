@@ -11,21 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Build hub
+      - name: Check both builds
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.4
           target: esp32c3
-          command: cd esp32c3
-      - name: Build hub
-        run: |
-          cd esp32c3
-          cp sdkconfig.defaults.hub sdkconfig
-          idf.py fullclean
-          idf.py build
-      - name: Build distributed
-        run: |
-          cd esp32c3
-          cp sdkconfig.defaults.dist sdkconfig.defaults
-          idf.py fullclean
-          idf.py build
+          command: cd esp32c3 && cp sdkconfig.defaults.hub sdkconfig && idf.py fullclean && idf.py build && cp sdkconfig.defaults.dist sdkconfig.defaults && idf.py fullclean && idf.py build
