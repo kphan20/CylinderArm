@@ -16,10 +16,10 @@ jobs:
         with:
           esp_idf_version: v5.4
           target: esp32c3
-          command: cp sdkconfig.defaults.hub sdkconfig.defaults && idf.py fullclean && idf.py defconfig && idf.py build
+          command: cd esp32c3 && cp sdkconfig.defaults.hub sdkconfig.defaults && idf.py fullclean && idf.py defconfig && idf.py build
       - name: Build distributed
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.4
           target: esp32c3
-          command: cp sdkconfig.defaults.dist sdkconfig.defaults && idf.py fullclean && idf.py defconfig && idf.py build
+          command: cd esp32c3 && cp sdkconfig.defaults.dist sdkconfig.defaults && idf.py fullclean && idf.py defconfig && idf.py build
