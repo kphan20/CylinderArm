@@ -1,10 +1,12 @@
-name: Build ESP-IDF Code
+name: ESP Firmware Checks
 
 on:
   push:
     branches:
       - dev
+    paths: esp32c3/**
   pull_request:
+    paths: esp32c3/**
 
 jobs:
   build:
