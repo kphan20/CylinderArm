@@ -16,6 +16,7 @@ jobs:
         with:
           esp_idf_version: v5.4
           target: esp32c3
+          command: cd esp32c3 && idf.py build
       - name: Build hub
         run:
           cd esp32c3
