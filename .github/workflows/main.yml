@@ -16,15 +16,15 @@ jobs:
         with:
           esp_idf_version: v5.4
           target: esp32c3
-          command: cd esp32c3 && idf.py build
+          command: cd esp32c3
       - name: Build hub
-        run:
+        run: |
           cd esp32c3
           cp sdkconfig.defaults.hub sdkconfig
           idf.py fullclean
           idf.py build
       - name: Build distributed
-        run:
+        run: |
           cd esp32c3
           cp sdkconfig.defaults.dist sdkconfig.defaults
           idf.py fullclean
