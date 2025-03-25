@@ -8,14 +8,12 @@
 #include "driver/spi_slave.h"
 #include "driver/gpio.h"
 
-#include "esp_wifi.h"
-#include "esp_now.h"
 #include "esp_log.h"
 
 #include "pins.h"
 
-#define NUM_DISTRIBUTED_CONTROLLERS 1
-#define BYTES_PER_CONTROLLER 2
+#define NUM_DISTRIBUTED_CONTROLLERS CONFIG_NUM_DISTRIBUTED_CONTROLLERS
+#define BYTES_PER_CONTROLLER CONFIG_BYTES_PER_CONTROLLER
 #define SPI_TRANSACTION_SIZE (NUM_DISTRIBUTED_CONTROLLERS * BYTES_PER_CONTROLLER)
 
 // SPI response related variables
