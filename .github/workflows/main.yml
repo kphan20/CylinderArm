@@ -16,4 +16,4 @@ jobs:
         with:
           esp_idf_version: v5.4
           target: esp32c3
-          command: cd esp32c3 && cp sdkconfig.defaults.hub sdkconfig && idf.py fullclean && idf.py build && cp sdkconfig.defaults.dist sdkconfig.defaults && idf.py fullclean && idf.py build
+          command: cd esp32c3 && cp sdkconfig.defaults.hub sdkconfig && idf.py fullclean && idf.py build && cp sdkconfig.defaults.dist sdkconfig && idf.py fullclean && idf.py build
