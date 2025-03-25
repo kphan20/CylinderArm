@@ -1,0 +1,30 @@
+name: Build ESP-IDF Code
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up ESP-IDF
+        uses: espressif/setup-idf@v1
+        with:
+          idf-version: v5.4
+      - name: Build hub
+        run: |
+          cp sdkconfig.defaults.hub sdkconfig.defaults
+          idf.py fullclean
+          idf.py defconfig
+          idf.py build
+      - name: Build distributed
+        run: |
+          cp sdkconfig.defaults.dist sdkconfig.defaults
+          idf.py fullclean
+          idf.py defconfig
+          idf.py build
+      
