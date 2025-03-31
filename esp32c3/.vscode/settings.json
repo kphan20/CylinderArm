@@ -21,7 +21,13 @@
         "queue.h": "c",
         "esp_log.h": "c",
         "inttypes.h": "c",
-        "sdkconfig.h": "c"
+        "sdkconfig.h": "c",
+        "espnow.h": "c",
+        "esp_now.h": "c",
+        "sensor.h": "c",
+        "semphr.h": "c",
+        "rmt_rx.h": "c",
+        "rmt_common.h": "c"
     },
     "idf.pythonInstallPath": "/usr/bin/python",
     "python.autoComplete.extraPaths": [

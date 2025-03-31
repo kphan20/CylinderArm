@@ -465,14 +465,14 @@ CONFIG_PARTITION_TABLE_MD5=y
 #
 # Cylinder Arm Configuration
 #
-# CONFIG_IS_HUB is not set
+CONFIG_IS_HUB=y
 
 #
-# Distributed Config
+# Hub Config
 #
-CONFIG_I2C_SENSOR=y
-# CONFIG_PWM_SENSOR is not set
-# end of Distributed Config
+CONFIG_NUM_DISTRIBUTED_CONTROLLERS=1
+CONFIG_BYTES_PER_CONTROLLER=2
+# end of Hub Config
 
 CONFIG_ESPNOW_CHANNEL=1
 CONFIG_DEBUG=y

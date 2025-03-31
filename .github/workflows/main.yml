@@ -1,0 +1,21 @@
+name: ESP Firmware Checks
+
+on:
+  push:
+    branches:
+      - dev
+    paths: esp32c3/**
+  pull_request:
+    paths: esp32c3/**
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check both builds
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.4
+          target: esp32c3
+          command: cd esp32c3 && cp sdkconfig.defaults.hub sdkconfig && idf.py fullclean && idf.py build && cp sdkconfig.defaults.dist sdkconfig && idf.py fullclean && idf.py build

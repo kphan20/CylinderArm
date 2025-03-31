@@ -7,19 +7,25 @@ menu "Cylinder Arm Configuration"
     
     menu "Hub Config"
         depends on IS_HUB
-
-        config ESPNOW_CHANNEL
-            int "ESPNOW Channel"
+        
+        config NUM_DISTRIBUTED_CONTROLLERS
+            int "Number of distributed controllers"
             default 1
-            range 0 14
+            range 0 20
             help
-                The channel on which you send and receive ESPNOW data
-
+                The number of distributed controllers that the hub is communicating with
+        
+        config BYTES_PER_CONTROLLER
+            int "Number of bytes received/sent to each distributed controller"
+            default 2
+            range 1 20
+            help
+                The number of bytes required to send setpoints and/or receive sensor data for each controller
     endmenu
 
     menu "Distributed Config"
         depends on !IS_HUB
-        choice
+        choice SENSOR_TYPE
             prompt "Choose which sensor type is used"
             default I2C_SENSOR
 
@@ -32,6 +38,13 @@ menu "Cylinder Arm Configuration"
         endchoice
     endmenu
     
+    config ESPNOW_CHANNEL
+        int "ESPNOW Channel"
+        default 1
+        range 0 14
+        help
+            The channel on which you send and receive ESPNOW data
+
     config DEBUG
         bool "Enable debug mode"
         default "y"
