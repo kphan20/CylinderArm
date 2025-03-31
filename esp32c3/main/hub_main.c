@@ -87,7 +87,8 @@ void spi_task(void * arg)
 // task that will take updates from ESPNOW and put them in the send buffer
 void update_sensor_data_task(void * arg)
 {
-    sensor_data_update update;
+/*    
+sensor_data_update update;
     while (1)
     {
         // block until an update is received
@@ -100,6 +101,13 @@ void update_sensor_data_task(void * arg)
                 xSemaphoreGive(sensor_data_mutex);
             }
         }
+    }*/
+    uint8_t curr_level = 0;
+    while(1)
+    {
+        gpio_set_level(HANDSHAKE_PIN, curr_level);
+        curr_level = curr_level ^ 1;
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -144,7 +152,7 @@ void app_main(void)
 
     // TODO give two KB to spi task for now
     // make SPI high priority
-    xTaskCreate(spi_task, "SPI Task", 512, NULL, configMAX_PRIORITIES-2, NULL);
+//    xTaskCreate(spi_task, "SPI Task", 512, NULL, configMAX_PRIORITIES-2, NULL);
     // TODO currently 1kb
     xTaskCreate(update_sensor_data_task, "Update Send Buffer Task", 256, NULL, configMAX_PRIORITIES-3, NULL);
 }
