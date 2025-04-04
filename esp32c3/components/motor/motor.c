@@ -5,9 +5,16 @@
 #include "esp_system.h"
 #include "driver/ledc.h"
 #include "driver/gpio.h"
+// #include "driver/gptimer.h"
 
 #include "pins.h"
 #include "motor.h"
+
+typedef struct
+{
+    uint32_t dir;
+    uint32_t duty_cycle;
+} motor_cmd_t;
 
 static QueueHandle_t motor_cmd_q;
 
@@ -81,7 +88,7 @@ void motor_gpio_setup()
 
 static void command_motor_task(void * arg)
 {
-    motor_cmd_t duty;
+    motor_cmd_t cmd;
     TickType_t prev_wake_time = xTaskGetTickCount();
     const TickType_t task_freq = pdMS_TO_TICKS(5);
     while(1)
@@ -102,18 +109,18 @@ static void command_motor_task(void * arg)
             }
         }
         // use delay to stay responsive
-        else if (xQueueReceive(motor_cmd_q, &duty, task_freq) == pdPASS)
+        else if (xQueueReceive(motor_cmd_q, &cmd, task_freq) == pdPASS)
         {
             // TODO check for limit switch here?
             // TODO based on the sign of the duty cycle set direction
-            gpio_set_level(MOTOR_DIR, (uint32_t)((duty >> 31) & 1));
+            gpio_set_level(MOTOR_DIR, cmd.dir);
             
             // set duty cycle to absolute value
             // TODO should hpoint just be zero?
-            uint32_t duty_conv = (uint32_t)((duty ^ (duty >> 31)) - (duty >> 31));
+            // uint32_t duty_conv = (uint32_t)((duty ^ (duty >> 31)) - (duty >> 31));
             // clamp value
-            duty_conv = duty_conv < DUTY_MIN ? DUTY_MIN : (duty_conv > DUTY_MAX ? DUTY_MAX : duty_conv);
-            ledc_set_duty_and_update(LEDC_MODE, LEDC_CHANNEL, duty_conv, 0);
+            // duty_conv = duty_conv < DUTY_MIN ? DUTY_MIN : (duty_conv > DUTY_MAX ? DUTY_MAX : duty_conv);
+            ledc_set_duty_and_update(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle/*duty_conv*/, 0);
         }
         xTaskDelayUntil(&prev_wake_time, task_freq);
     }
@@ -123,12 +130,19 @@ void motor_task_setup()
 {
     motor_cmd_q = xQueueCreate(4, sizeof(motor_cmd_t));
     // TODO configure this correctly
-    xTaskCreate(command_motor_task, "Motor Task", 1, NULL, 7, NULL);
+    xTaskCreate(command_motor_task, "Motor Task", 512, NULL, 7, NULL);
 }
 
+// Takes in a value between -100 percent and 100 percent
 void motor_set_command(PID_VAL_TYPE command)
 {
     // TODO command should never not fit into an int32_t
-    motor_cmd_t cmd_converted = round(command);
-    xQueueSend(motor_cmd_q, &cmd_converted, portMAX_DELAY);
+    uint32_t duty = (uint32_t)((float)DUTY_MAX * (fabsf(command) / 100.0f));
+    // TODO see if clamp is required
+    duty = duty < DUTY_MIN ? DUTY_MIN : (duty > DUTY_MAX ? DUTY_MAX : duty);
+    motor_cmd_t cmd = {
+        .dir = (uint32_t)(command < 0.0f),
+        .duty_cycle = duty
+    };
+    xQueueSend(motor_cmd_q, &cmd, portMAX_DELAY);
 }

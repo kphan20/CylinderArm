@@ -16,6 +16,17 @@
 #define BYTES_PER_CONTROLLER CONFIG_BYTES_PER_CONTROLLER
 #define SPI_TRANSACTION_SIZE (NUM_DISTRIBUTED_CONTROLLERS * BYTES_PER_CONTROLLER)
 
+static void test_task(void * arg)
+{
+    uint8_t curr_level = 0;
+    while(1)
+    {
+        gpio_set_level(HANDSHAKE_PIN, curr_level);
+        curr_level = curr_level ^ 1;
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
 // SPI response related variables
 static uint8_t sensor_data[SPI_TRANSACTION_SIZE]; // sent over SPI to main compute
 static SemaphoreHandle_t sensor_data_mutex; // mutex for the send buffer
@@ -84,9 +95,8 @@ void spi_task(void * arg)
 
 // task that will take updates from ESPNOW and put them in the send buffer
 void update_sensor_data_task(void * arg)
-{
-/*    
-sensor_data_update update;
+{   
+    sensor_data_update update;
     while (1)
     {
         // block until an update is received
@@ -99,13 +109,6 @@ sensor_data_update update;
                 xSemaphoreGive(sensor_data_mutex);
             }
         }
-    }*/
-    uint8_t curr_level = 0;
-    while(1)
-    {
-        gpio_set_level(HANDSHAKE_PIN, curr_level);
-        curr_level = curr_level ^ 1;
-        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -150,7 +153,8 @@ void app_main(void)
 
     // TODO give two KB to spi task for now
     // make SPI high priority
-//    xTaskCreate(spi_task, "SPI Task", 512, NULL, configMAX_PRIORITIES-2, NULL);
+    // xTaskCreate(spi_task, "SPI Task", 512, NULL, configMAX_PRIORITIES-2, NULL);
     // TODO currently 1kb
-    xTaskCreate(update_sensor_data_task, "Update Send Buffer Task", 256, NULL, configMAX_PRIORITIES-3, NULL);
+    // xTaskCreate(update_sensor_data_task, "Update Send Buffer Task", 256, NULL, configMAX_PRIORITIES-3, NULL);
+    xTaskCreate(test_task, "Test Task", 512, NULL, configMAX_PRIORITIES - 5, NULL);
 }

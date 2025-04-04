@@ -42,6 +42,21 @@ static void espnow_recv_cb(const esp_now_recv_info_t * esp_now_info, const uint8
 }
 */
 
+static void test_task(void * arg)
+{
+    PID_VAL_TYPE cmd = 0.0f;
+    PID_VAL_TYPE inc = 50.0f / 5.0f / 300.0f;
+    TickType_t prev_wake_time = xTaskGetTickCount();
+    const TickType_t task_freq = 1;
+    while(1)
+    {
+        if (cmd > 50.0f) cmd = -50.0f;
+        motor_set_command(cmd);
+        cmd += inc;
+        xTaskDelayUntil(&prev_wake_time, task_freq);
+    }
+}
+
 static void setpoint_update_task(void * arg)
 {
     PID_VAL_TYPE setpoint_recv;
@@ -76,18 +91,20 @@ void gpio_setup()
 {
     gpio_install_isr_service(ESP_INTR_FLAG_IRAM); // TODO figure out IRAM stuff
 
-    sensor_gpio_setup();
+    // sensor_gpio_setup();
     motor_gpio_setup();
 }
 
 void task_setup()
 {
     // espnow_init(espnow_send_cb, espnow_recv_cb);
-    sensor_task_setup();
+    // sensor_task_setup();
     motor_task_setup();
 
     // TODO tune task parameters
-    xTaskCreate(app_task, "App Task", 512, NULL, 10, NULL);
+    // xTaskCreate(app_task, "App Task", 512, NULL, 10, NULL);
+
+    xTaskCreate(test_task, "Test Task", 512, NULL, 6, NULL);
 }
 
 void app_main(void)
