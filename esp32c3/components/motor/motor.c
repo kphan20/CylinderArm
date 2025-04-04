@@ -33,7 +33,8 @@ static const uint32_t DUTY_MAX = (1 << DUTY_RESOLUTION) - 1;
 
 void stop_motor()
 {
-    ledc_set_duty_and_update(LEDC_MODE, LEDC_CHANNEL, 0, 0);
+    ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
+    ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
 }
 
 static void IRAM_ATTR limit_isr_handler(void* arg)
@@ -52,7 +53,7 @@ void motor_gpio_setup()
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
     };
-//    ESP_ERROR_CHECK(gpio_config(&io_conf));
+    ESP_ERROR_CHECK(gpio_config(&io_conf));
 
     // configure motor output pins (TODO see if this is necessary)
     io_conf.pin_bit_mask = (1ULL << MOTOR_DIR) | (1ULL << MOTOR_PWM);
@@ -83,11 +84,11 @@ void motor_gpio_setup()
     };
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 
-//    ESP_ERROR_CHECK(gpio_set_intr_type(LOWER_LIM_SWITCH, GPIO_INTR_NEGEDGE)); // TODO figure out if it should be falling edge
-//    ESP_ERROR_CHECK(gpio_set_intr_type(UPPER_LIM_SWITCH, GPIO_INTR_NEGEDGE));
+    ESP_ERROR_CHECK(gpio_set_intr_type(LOWER_LIM_SWITCH, GPIO_INTR_NEGEDGE)); // TODO figure out if it should be falling edge
+    ESP_ERROR_CHECK(gpio_set_intr_type(UPPER_LIM_SWITCH, GPIO_INTR_NEGEDGE));
 
-//    gpio_isr_handler_add(LOWER_LIM_SWITCH, limit_isr_handler, (void*) LOWER_LIM_SWITCH);
-//    gpio_isr_handler_add(UPPER_LIM_SWITCH, limit_isr_handler, (void*) UPPER_LIM_SWITCH);
+    gpio_isr_handler_add(LOWER_LIM_SWITCH, limit_isr_handler, (void*) LOWER_LIM_SWITCH);
+    gpio_isr_handler_add(UPPER_LIM_SWITCH, limit_isr_handler, (void*) UPPER_LIM_SWITCH);
 }
 
 static void command_motor_task(void * arg)
@@ -120,13 +121,8 @@ static void command_motor_task(void * arg)
             gpio_set_level(MOTOR_DIR, cmd.dir);
             
             // set duty cycle to absolute value
-            // TODO should hpoint just be zero?
-            // uint32_t duty_conv = (uint32_t)((duty ^ (duty >> 31)) - (duty >> 31));
-            // clamp value
-            // duty_conv = duty_conv < DUTY_MIN ? DUTY_MIN : (duty_conv > DUTY_MAX ? DUTY_MAX : duty_conv);
             ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle);
             ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
-            // ledc_set_duty_and_update(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle/*duty_conv*/, 0);
        }
         xTaskDelayUntil(&prev_wake_time, task_freq);
     }
@@ -137,6 +133,25 @@ void motor_task_setup()
     motor_cmd_q = xQueueCreate(4, sizeof(motor_cmd_t));
     // TODO configure this correctly
     xTaskCreate(command_motor_task, "Motor Task", 512, NULL, 7, NULL);
+
+        // TODO use a timer instead for faster PID/control rates
+    // gptimer_handle_t gptimer = NULL;
+    // gptimer_config_t timer_config = {
+    //     .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+    //     .direction = GPTIMER_COUNT_UP,
+    //     .resolution_hz = 1000, // start with 1khz
+    // };
+
+    // ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &gptimer));
+    // gptimer_event_callbacks_t timer_cbs = {
+    //     .on_alarm = NULL,
+    // };
+    // gptimer_register_event_callbacks(gptimer, &timer_cbs, NULL);
+    // gptimer_enable(gptimer);
+    // gptimer_alarm_config_t alarm_cfg = {
+    //     .alarm_count = 1
+    // };
+    // gptimer_set_alarm_action(gptimer, &alarm_cfg);
 }
 
 // Takes in a value between -100 percent and 100 percent
