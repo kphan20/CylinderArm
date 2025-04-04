@@ -125,6 +125,7 @@ static void command_motor_task(void * arg)
             // clamp value
             // duty_conv = duty_conv < DUTY_MIN ? DUTY_MIN : (duty_conv > DUTY_MAX ? DUTY_MAX : duty_conv);
             ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle);
+            ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
             // ledc_set_duty_and_update(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle/*duty_conv*/, 0);
        }
         xTaskDelayUntil(&prev_wake_time, task_freq);
