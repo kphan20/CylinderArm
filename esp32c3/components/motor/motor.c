@@ -75,7 +75,7 @@ void motor_gpio_setup()
     ledc_channel_config_t ledc_channel = {
         .timer_sel = LEDC_TIMER,
         .speed_mode = LEDC_MODE,
-        .channel = LEDC_CHANNEL_0, //TODO
+        .channel = LEDC_CHANNEL, //TODO
         .intr_type = LEDC_INTR_DISABLE, //TODO
         .gpio_num = MOTOR_PWM,
         .duty = 0,
@@ -124,7 +124,8 @@ static void command_motor_task(void * arg)
             // uint32_t duty_conv = (uint32_t)((duty ^ (duty >> 31)) - (duty >> 31));
             // clamp value
             // duty_conv = duty_conv < DUTY_MIN ? DUTY_MIN : (duty_conv > DUTY_MAX ? DUTY_MAX : duty_conv);
-//            ledc_set_duty_and_update(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle/*duty_conv*/, 0);
+            ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle);
+            // ledc_set_duty_and_update(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle/*duty_conv*/, 0);
        }
         xTaskDelayUntil(&prev_wake_time, task_freq);
     }
