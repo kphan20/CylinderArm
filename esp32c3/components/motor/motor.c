@@ -60,7 +60,7 @@ void motor_gpio_setup()
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pull_up_en = GPIO_PULLDOWN_DISABLE;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.intr_type = GPIO_INTR_NEGEDGE; // TODO
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 
     // configure motor PWM peripheral
@@ -83,9 +83,6 @@ void motor_gpio_setup()
         .hpoint = 0, // TODO
     };
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
-
-    ESP_ERROR_CHECK(gpio_set_intr_type(LOWER_LIM_SWITCH, GPIO_INTR_NEGEDGE)); // TODO figure out if it should be falling edge
-    ESP_ERROR_CHECK(gpio_set_intr_type(UPPER_LIM_SWITCH, GPIO_INTR_NEGEDGE));
 
     gpio_isr_handler_add(LOWER_LIM_SWITCH, limit_isr_handler, (void*) LOWER_LIM_SWITCH);
     gpio_isr_handler_add(UPPER_LIM_SWITCH, limit_isr_handler, (void*) UPPER_LIM_SWITCH);
