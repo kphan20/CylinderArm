@@ -20,6 +20,7 @@ static QueueHandle_t motor_cmd_q;
 
 static const ledc_mode_t LEDC_MODE = LEDC_LOW_SPEED_MODE;
 static const ledc_channel_t LEDC_CHANNEL = LEDC_CHANNEL_0;
+static const ledc_timer_t LEDC_TIMER = LEDC_TIMER_0;
 
 static volatile gpio_num_t * hit_switch;
 
@@ -63,13 +64,16 @@ void motor_gpio_setup()
 
     // configure motor PWM peripheral
     ledc_timer_config_t ledc_timer = {
-        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .speed_mode = LEDC_MODE,
         .freq_hz = 25000, // TODO
         .duty_resolution = DUTY_RESOLUTION, // TODO
+        .clk_cfg = LEDC_AUTO_CLK,
+        .timer_num = LEDC_TIMER
     };
     ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
 
     ledc_channel_config_t ledc_channel = {
+        .timer_sel = LEDC_TIMER,
         .speed_mode = LEDC_MODE,
         .channel = LEDC_CHANNEL_0, //TODO
         .intr_type = LEDC_INTR_DISABLE, //TODO
