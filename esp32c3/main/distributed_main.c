@@ -57,6 +57,17 @@ static void test_task(void * arg)
     }
 }
 
+static void test_task2(void * arg)
+{
+    uint8_t curr_level = 0;
+    while(1)
+    {
+        gpio_set_level(HANDSHAKE_PIN, curr_level);
+        curr_level = curr_level ^ 1;
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
 static void setpoint_update_task(void * arg)
 {
     PID_VAL_TYPE setpoint_recv;
@@ -93,6 +104,15 @@ void gpio_setup()
 
     // sensor_gpio_setup();
     motor_gpio_setup();
+
+    // TEST
+    gpio_config_t handshake_conf = {
+        .intr_type = GPIO_INTR_DISABLE,
+        .mode = GPIO_MODE_OUTPUT,
+        .pin_bit_mask = BIT64(HANDSHAKE_PIN)
+    };
+
+    gpio_config(&handshake_conf);
 }
 
 void task_setup()
@@ -105,6 +125,7 @@ void task_setup()
     // xTaskCreate(app_task, "App Task", 512, NULL, 10, NULL);
 
     xTaskCreate(test_task, "Test Task", 512, NULL, 6, NULL);
+    xTaskCreate(test_task2, "Test Task 2", 512, NULL, 3, NULL);
 }
 
 void app_main(void)

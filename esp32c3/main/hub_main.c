@@ -136,14 +136,6 @@ void app_main(void)
         .post_trans_cb = spi_post_trans_cb
     };
 
-    gpio_config_t handshake_conf = {
-        .intr_type = GPIO_INTR_DISABLE,
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = BIT64(HANDSHAKE_PIN)
-    };
-
-    gpio_config(&handshake_conf);
-
     //Enable pull-ups on SPI lines so we don't detect rogue pulses when no master is connected.
     gpio_set_pull_mode(MOSI_PIN, GPIO_PULLUP_ONLY);
     gpio_set_pull_mode(SCLK_PIN, GPIO_PULLUP_ONLY);
@@ -156,5 +148,14 @@ void app_main(void)
     // xTaskCreate(spi_task, "SPI Task", 512, NULL, configMAX_PRIORITIES-2, NULL);
     // TODO currently 1kb
     // xTaskCreate(update_sensor_data_task, "Update Send Buffer Task", 256, NULL, configMAX_PRIORITIES-3, NULL);
+    
+    // TEST
+    gpio_config_t handshake_conf = {
+        .intr_type = GPIO_INTR_DISABLE,
+        .mode = GPIO_MODE_OUTPUT,
+        .pin_bit_mask = BIT64(HANDSHAKE_PIN)
+    };
+
+    gpio_config(&handshake_conf);
     xTaskCreate(test_task, "Test Task", 512, NULL, configMAX_PRIORITIES - 5, NULL);
 }
