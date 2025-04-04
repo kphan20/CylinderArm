@@ -125,7 +125,7 @@ void task_setup()
     // xTaskCreate(app_task, "App Task", 512, NULL, 10, NULL);
 
     xTaskCreate(test_task, "Test Task", 512, NULL, 6, NULL);
-    xTaskCreate(test_task2, "Test Task 2", 512, NULL, 3, NULL);
+    xTaskCreate(test_task2, "Test Task 2", 512, NULL, configMAX_PRIORITIES - 5, NULL);
 }
 
 void app_main(void)

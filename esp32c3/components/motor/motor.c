@@ -51,7 +51,7 @@ void motor_gpio_setup()
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
     };
-    ESP_ERROR_CHECK(gpio_config(&io_conf));
+//    ESP_ERROR_CHECK(gpio_config(&io_conf));
 
     // configure motor output pins (TODO see if this is necessary)
     io_conf.pin_bit_mask = (1ULL << MOTOR_DIR) | (1ULL << MOTOR_PWM);
@@ -79,11 +79,11 @@ void motor_gpio_setup()
     };
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 
-    ESP_ERROR_CHECK(gpio_set_intr_type(LOWER_LIM_SWITCH, GPIO_INTR_NEGEDGE)); // TODO figure out if it should be falling edge
-    ESP_ERROR_CHECK(gpio_set_intr_type(UPPER_LIM_SWITCH, GPIO_INTR_NEGEDGE));
+//    ESP_ERROR_CHECK(gpio_set_intr_type(LOWER_LIM_SWITCH, GPIO_INTR_NEGEDGE)); // TODO figure out if it should be falling edge
+//    ESP_ERROR_CHECK(gpio_set_intr_type(UPPER_LIM_SWITCH, GPIO_INTR_NEGEDGE));
 
-    gpio_isr_handler_add(LOWER_LIM_SWITCH, limit_isr_handler, (void*) LOWER_LIM_SWITCH);
-    gpio_isr_handler_add(UPPER_LIM_SWITCH, limit_isr_handler, (void*) UPPER_LIM_SWITCH);
+//    gpio_isr_handler_add(LOWER_LIM_SWITCH, limit_isr_handler, (void*) LOWER_LIM_SWITCH);
+//    gpio_isr_handler_add(UPPER_LIM_SWITCH, limit_isr_handler, (void*) UPPER_LIM_SWITCH);
 }
 
 static void command_motor_task(void * arg)
@@ -110,7 +110,7 @@ static void command_motor_task(void * arg)
         }
         // use delay to stay responsive
         else if (xQueueReceive(motor_cmd_q, &cmd, task_freq) == pdPASS)
-        {
+       {
             // TODO check for limit switch here?
             // TODO based on the sign of the duty cycle set direction
             gpio_set_level(MOTOR_DIR, cmd.dir);
@@ -120,8 +120,8 @@ static void command_motor_task(void * arg)
             // uint32_t duty_conv = (uint32_t)((duty ^ (duty >> 31)) - (duty >> 31));
             // clamp value
             // duty_conv = duty_conv < DUTY_MIN ? DUTY_MIN : (duty_conv > DUTY_MAX ? DUTY_MAX : duty_conv);
-            ledc_set_duty_and_update(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle/*duty_conv*/, 0);
-        }
+//            ledc_set_duty_and_update(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle/*duty_conv*/, 0);
+       }
         xTaskDelayUntil(&prev_wake_time, task_freq);
     }
 }
