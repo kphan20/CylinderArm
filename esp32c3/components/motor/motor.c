@@ -142,8 +142,11 @@ void motor_task_setup()
 {
     motor_cmd_q = xQueueCreate(4, sizeof(motor_cmd_t));
     // TODO configure this correctly
+#ifdef CONFIG_DEBUG
+    xTaskCreate(command_motor_task, "Motor Task", 2048, NULL, 7, NULL);
+#else
     xTaskCreate(command_motor_task, "Motor Task", 512, NULL, 7, NULL);
-
+#endif
         // TODO use a timer instead for faster PID/control rates
     // gptimer_handle_t gptimer = NULL;
     // gptimer_config_t timer_config = {
