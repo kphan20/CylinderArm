@@ -103,13 +103,13 @@ static void rmt_task(void * arg)
     ESP_ERROR_CHECK(rmt_rx_register_event_callbacks(rx_chan, &rmt_callbacks, NULL));
     ESP_ERROR_CHECK(rmt_enable(rx_chan));
 
-    // // message configuration
-    // rmt_receive_config_t rx_recv_config = {
-    //     .signal_range_min_ns = 900000, // 900 usec for now (smallest pulse is around 1 ms)
-    //     .signal_range_max_ns = 6000000, // 6 ms to capture most of low period
-    // };
+    // message configuration
+    rmt_receive_config_t rx_recv_config = {
+        .signal_range_min_ns = 900000, // 900 usec for now (smallest pulse is around 1 ms)
+        .signal_range_max_ns = 6000000, // 6 ms to capture most of low period
+    };
 
-    // rmt_symbol_word_t raw_symbols[48]; // TODO tune size
+    rmt_symbol_word_t raw_symbols[64]; // TODO tune size
     rmt_rx_done_event_data_t rx_data;
 
     // application variables
