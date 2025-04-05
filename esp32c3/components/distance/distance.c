@@ -96,12 +96,12 @@ static void rmt_task(void * arg)
     rmt_channel_handle_t rx_chan = NULL;
     ESP_ERROR_CHECK(rmt_new_rx_channel(&rmt_rx_channel_config, &rx_chan));
 
-    // // callback configuration
-    // rmt_rx_event_callbacks_t rmt_callbacks = {
-    //     .on_recv_done = rmt_on_recv_callback
-    // };
-    // ESP_ERROR_CHECK(rmt_rx_register_event_callbacks(rx_chan, &rmt_callbacks, NULL));
-    // ESP_ERROR_CHECK(rmt_enable(rx_chan));
+    // callback configuration
+    rmt_rx_event_callbacks_t rmt_callbacks = {
+        .on_recv_done = rmt_on_recv_callback
+    };
+    ESP_ERROR_CHECK(rmt_rx_register_event_callbacks(rx_chan, &rmt_callbacks, NULL));
+    ESP_ERROR_CHECK(rmt_enable(rx_chan));
 
     // // message configuration
     // rmt_receive_config_t rx_recv_config = {
