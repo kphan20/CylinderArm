@@ -35,16 +35,14 @@ void sensor_gpio_setup()
     gpio_config_t io_conf = {
         .pin_bit_mask = (1ULL << ENCODER_A_PIN) | (1ULL << ENCODER_B_PIN),
         .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_ENABLE, // enable pulldown for rising edge
+        .intr_type = GPIO_INTR_POSEDGE
     };
     gpio_config(&io_conf);
 
-    // change encoder A to have rising edge interrupt
-    gpio_set_intr_type(ENCODER_A_PIN, GPIO_INTR_POSEDGE);
-
     // TODO see if doing this here is a good idea
+    // TODO see if esp can handle both pins
     gpio_isr_handler_add(ENCODER_A_PIN, encoder_isr_handler, NULL);
 }
 
@@ -59,10 +57,16 @@ static bool check_distance_pulse(uint16_t high_time_us)
 {
     if (high_time_us < 1000)
     {
+        #ifdef CONFIG_DEBUG
+        ESP_LOGW("PWM_SENSOR", "TOO SHORT");
+        #endif
         return false; // TODO invalid reading (too close)
     }
     else if (high_time_us > 1650)
     {
+        #ifdef CONFIG_DEBUG
+        ESP_LOGW("PWM_SENSOR", "TOO LONG");
+        #endif
         return false; // TODO no object detected
     }
     pwm_distance = ((high_time_us - 1000) << 1) - pwm_distance_offset; // TODO current failure mode is to use previous value?
@@ -98,7 +102,7 @@ static void rmt_task(void * arg)
         .signal_range_max_ns = 6000000, // 6 ms to capture most of low period
     };
 
-    rmt_symbol_word_t raw_symbols[16]; // TODO tune size
+    rmt_symbol_word_t raw_symbols[48]; // TODO tune size
     rmt_rx_done_event_data_t rx_data;
 
     // application variables
