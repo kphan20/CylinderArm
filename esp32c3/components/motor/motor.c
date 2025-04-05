@@ -21,20 +21,26 @@ static QueueHandle_t motor_cmd_q;
 static const ledc_mode_t LEDC_MODE = LEDC_LOW_SPEED_MODE;
 static const ledc_channel_t LEDC_CHANNEL = LEDC_CHANNEL_0;
 static const ledc_timer_t LEDC_TIMER = LEDC_TIMER_0;
+static const uint32_t PWM_FREQ = 25000; // Hz
 
 static volatile gpio_num_t * hit_switch;
 
-static const ledc_timer_bit_t DUTY_RESOLUTION = LEDC_TIMER_10_BIT;
+static const ledc_timer_bit_t DUTY_RESOLUTION = LEDC_TIMER_10_BIT; // TODO determine good resolution
 
 // defines [min, max] of duty cycle values
 static const uint32_t DUTY_MIN = 0;
 static const uint32_t DUTY_MAX = (1 << DUTY_RESOLUTION) - 1;
 
 
+static inline void update_motor_duty(uint32_t duty)
+{
+    ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, duty);
+    ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+}
+
 void stop_motor()
 {
-    ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
-    ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+    update_motor_duty(0);
 }
 
 static void IRAM_ATTR limit_isr_handler(void* arg)
@@ -51,23 +57,23 @@ void motor_gpio_setup()
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE
+        .intr_type = GPIO_INTR_NEGEDGE // TODO determine edge type
     };
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 
-    // configure motor output pins (TODO see if this is necessary)
+    // configure motor output pins
     io_conf.pin_bit_mask = (1ULL << MOTOR_DIR) | (1ULL << MOTOR_PWM);
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pull_up_en = GPIO_PULLDOWN_DISABLE;
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    io_conf.intr_type = GPIO_INTR_NEGEDGE; // TODO
+    io_conf.intr_type = GPIO_INTR_DISABLE;
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 
     // configure motor PWM peripheral
     ledc_timer_config_t ledc_timer = {
         .speed_mode = LEDC_MODE,
-        .freq_hz = 25000, // TODO
-        .duty_resolution = DUTY_RESOLUTION, // TODO
+        .freq_hz = PWM_FREQ,
+        .duty_resolution = DUTY_RESOLUTION,
         .clk_cfg = LEDC_AUTO_CLK,
         .timer_num = LEDC_TIMER
     };
@@ -76,11 +82,11 @@ void motor_gpio_setup()
     ledc_channel_config_t ledc_channel = {
         .timer_sel = LEDC_TIMER,
         .speed_mode = LEDC_MODE,
-        .channel = LEDC_CHANNEL, //TODO
-        .intr_type = LEDC_INTR_DISABLE, //TODO
+        .channel = LEDC_CHANNEL,
+        .intr_type = LEDC_INTR_DISABLE,
         .gpio_num = MOTOR_PWM,
         .duty = 0,
-        .hpoint = 0, // TODO
+        .hpoint = 0,
     };
     ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
 
@@ -118,8 +124,7 @@ static void command_motor_task(void * arg)
             gpio_set_level(MOTOR_DIR, cmd.dir);
             
             // set duty cycle to absolute value
-            ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, cmd.duty_cycle);
-            ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+            update_motor_duty(cmd.duty_cycle);
        }
         xTaskDelayUntil(&prev_wake_time, task_freq);
     }
