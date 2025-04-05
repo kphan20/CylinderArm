@@ -62,7 +62,7 @@ static void test_task2(void * arg)
     uint8_t curr_level = 0;
     while(1)
     {
-        gpio_set_level(HANDSHAKE_PIN, curr_level);
+        gpio_set_level(PWM_INPUT, curr_level);
         curr_level = curr_level ^ 1;
         vTaskDelay(pdMS_TO_TICKS(500));
     }
@@ -109,7 +109,7 @@ void gpio_setup()
     gpio_config_t handshake_conf = {
         .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = BIT64(HANDSHAKE_PIN)
+        .pin_bit_mask = BIT64(PWM_INPUT)
     };
 
     gpio_config(&handshake_conf);
