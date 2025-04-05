@@ -83,33 +83,33 @@ static bool check_distance_pulse(uint16_t high_time_us)
 static void rmt_task(void * arg)
 {
     // channel configuration
-    // rmt_rx_channel_config_t rmt_rx_channel_config = {
-    //     .gpio_num = PWM_INPUT,
-    //     .clk_src = RMT_CLK_SRC_DEFAULT, 
-    //     .resolution_hz = 1000000, // TODO, current usec period
-    //     .mem_block_symbols = 48, // TODO
-    //     .flags.invert_in = 0, // TODO
-    //     .intr_priority = 15, // TODO
-    //     .flags.allow_pd = 0, // TODO
-    //     .flags.io_loop_back = 0, // TODO
-    // };
-    // rmt_channel_handle_t rx_chan = NULL;
-    //ESP_ERROR_CHECK(rmt_new_rx_channel(&rmt_rx_channel_config, &rx_chan));
+    rmt_rx_channel_config_t rmt_rx_channel_config = {
+        .gpio_num = PWM_INPUT,
+        .clk_src = RMT_CLK_SRC_DEFAULT, 
+        .resolution_hz = 1000000, // TODO, current usec period
+        .mem_block_symbols = 48, // TODO
+        .flags.invert_in = 0, // TODO
+        .intr_priority = 15, // TODO
+        .flags.allow_pd = 0, // TODO
+        .flags.io_loop_back = 0, // TODO
+    };
+    rmt_channel_handle_t rx_chan = NULL;
+    ESP_ERROR_CHECK(rmt_new_rx_channel(&rmt_rx_channel_config, &rx_chan));
 
     // callback configuration
-    // rmt_rx_event_callbacks_t rmt_callbacks = {
-    //     .on_recv_done = rmt_on_recv_callback
-    // };
-    //ESP_ERROR_CHECK(rmt_rx_register_event_callbacks(rx_chan, &rmt_callbacks, NULL));
-    //ESP_ERROR_CHECK(rmt_enable(rx_chan));
+    rmt_rx_event_callbacks_t rmt_callbacks = {
+        .on_recv_done = rmt_on_recv_callback
+    };
+    ESP_ERROR_CHECK(rmt_rx_register_event_callbacks(rx_chan, &rmt_callbacks, NULL));
+    ESP_ERROR_CHECK(rmt_enable(rx_chan));
 
     // message configuration
-    // rmt_receive_config_t rx_recv_config = {
-    //     .signal_range_min_ns = 900000, // 900 usec for now (smallest pulse is around 1 ms)
-    //     .signal_range_max_ns = 6000000, // 6 ms to capture most of low period
-    // };
+    rmt_receive_config_t rx_recv_config = {
+        .signal_range_min_ns = 900000, // 900 usec for now (smallest pulse is around 1 ms)
+        .signal_range_max_ns = 6000000, // 6 ms to capture most of low period
+    };
 
-    // rmt_symbol_word_t raw_symbols[48]; // TODO tune size
+    rmt_symbol_word_t raw_symbols[48]; // TODO tune size
     rmt_rx_done_event_data_t rx_data;
 
     // application variables
@@ -164,7 +164,7 @@ void sensor_task_setup()
 {
     q = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
     assert(q);
-    xTaskCreate(rmt_task, "read_pwm_task", 1024, NULL, 8, NULL); // TODO configure properly
+    xTaskCreate(rmt_task, "read_pwm_task", 2048, NULL, 8, NULL); // TODO configure properly
 }
 
 static void distance_fusion()
