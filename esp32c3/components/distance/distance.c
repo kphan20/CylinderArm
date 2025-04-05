@@ -164,7 +164,7 @@ void sensor_task_setup()
 {
     q = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
     assert(q);
-    xTaskCreate(rmt_task, "read_pwm_task", 2048, NULL, 8, NULL); // TODO configure properly
+    xTaskCreate(rmt_task, "read_pwm_task", 4096, NULL, 8, NULL); // TODO configure properly
 }
 
 static void distance_fusion()

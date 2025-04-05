@@ -9,6 +9,11 @@
 
 #include "pins.h"
 #include "motor.h"
+// #include "sensor.h"
+
+#ifdef CONFIG_DEBUG
+#include "esp_log.h"
+#endif
 
 typedef struct
 {
@@ -128,6 +133,9 @@ static void command_motor_task(void * arg)
        }
         xTaskDelayUntil(&prev_wake_time, task_freq);
     }
+    #ifdef CONFIG_DEBUG
+    ESP_LOGI("MOTOR_TASK", "STACK WATER MARK: %d", uxTaskGetStackHighWaterMark(NULL));
+    #endif
 }
 
 void motor_task_setup()
