@@ -470,8 +470,8 @@ CONFIG_PARTITION_TABLE_MD5=y
 #
 # Distributed Config
 #
-CONFIG_I2C_SENSOR=y
-# CONFIG_PWM_SENSOR is not set
+# CONFIG_I2C_SENSOR is not set
+CONFIG_PWM_SENSOR=y
 # end of Distributed Config
 
 CONFIG_ESPNOW_CHANNEL=1

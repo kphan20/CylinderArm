@@ -10,6 +10,10 @@
 #include "sensor.h"
 #include "pins.h"
 
+#ifdef CONFIG_DEBUG
+#include "esp_log.h"
+#endif
+
 typedef int32_t encoder_count_t;
 
 static QueueHandle_t q;
@@ -114,6 +118,9 @@ static void rmt_task(void * arg)
                 
                 // pulse corresponding to valid distance was found
                 high_pulse_found = true;
+                #ifdef CONFIG_DEBUG
+                ESP_LOGI("PWM_SENSOR", "Distance: %u", pwm_distance);
+                #endif
             }
 
             if (high_pulse_found)
@@ -123,16 +130,22 @@ static void rmt_task(void * arg)
             else
             {
                 no_receive_count++;
+                #ifdef CONFIG_DEBUG
+                ESP_LOGW("PWM_SENSOR", "INVALID READ, failed receive count: %u", no_receive_count);
+                #endif
             }
             high_pulse_found = false;
-            // ESP_ERROR_CHECK(rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &rx_recv_config));
+
+            // if something was sent in queue, then pulse was received and can call receive again
+            ESP_ERROR_CHECK(rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &rx_recv_config));
         }
         else
         {
-            no_receive_count++; // TODO setup failure handling
+            no_receive_count++; // TODO setup failure handling - probably just call rmt_receive after number of failures
+            #ifdef CONFIG_DEBUG
+            ESP_LOGW("PWM_SENSOR", "INVALID READ (timeout), failed receive count: %u", no_receive_count);
+            #endif
         }
-        // TODO call on every loop iteration? handles errors at least
-        ESP_ERROR_CHECK(rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &rx_recv_config));
     }
 }
 
@@ -140,7 +153,7 @@ void sensor_task_setup()
 {
     q = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
     assert(q);
-    xTaskCreate(rmt_task, "read_pwm_task", 1, NULL, 8, NULL); // TODO configure properly
+    xTaskCreate(rmt_task, "read_pwm_task", 512, NULL, 8, NULL); // TODO configure properly
 }
 
 static void distance_fusion()

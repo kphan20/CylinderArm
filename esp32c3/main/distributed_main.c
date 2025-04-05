@@ -42,6 +42,12 @@ static void espnow_recv_cb(const esp_now_recv_info_t * esp_now_info, const uint8
 }
 */
 
+#ifdef CONFIG_I2C_SENSOR
+#define BLINKING_PIN PWM_INPUT
+#elif CONFIG_PWM_SENSOR
+#define BLINKING_PIN SDA_IO_PIN
+#endif
+
 static void test_task(void * arg)
 {
     PID_VAL_TYPE cmd = 0.0f;
@@ -62,7 +68,7 @@ static void test_task2(void * arg)
     uint8_t curr_level = 0;
     while(1)
     {
-        gpio_set_level(PWM_INPUT, curr_level);
+        gpio_set_level(BLINKING_PIN, curr_level);
         curr_level = curr_level ^ 1;
         vTaskDelay(pdMS_TO_TICKS(500));
     }
@@ -102,14 +108,14 @@ void gpio_setup()
 {
     gpio_install_isr_service(ESP_INTR_FLAG_IRAM); // TODO figure out IRAM stuff
 
-    // sensor_gpio_setup();
+    sensor_gpio_setup();
     motor_gpio_setup();
 
     // TEST
     gpio_config_t handshake_conf = {
         .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = BIT64(PWM_INPUT)
+        .pin_bit_mask = BIT64(BLINKING_PIN)
     };
 
     gpio_config(&handshake_conf);
@@ -118,7 +124,7 @@ void gpio_setup()
 void task_setup()
 {
     // espnow_init(espnow_send_cb, espnow_recv_cb);
-    // sensor_task_setup();
+    sensor_task_setup();
     motor_task_setup();
 
     // TODO tune task parameters
