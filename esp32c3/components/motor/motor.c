@@ -132,10 +132,10 @@ static void command_motor_task(void * arg)
             update_motor_duty(cmd.duty_cycle);
        }
         xTaskDelayUntil(&prev_wake_time, task_freq);
+        #ifdef CONFIG_DEBUG
+        ESP_LOGI("MOTOR_TASK", "STACK WATER MARK: %d", uxTaskGetStackHighWaterMark(NULL));
+        #endif
     }
-    #ifdef CONFIG_DEBUG
-    ESP_LOGI("MOTOR_TASK", "STACK WATER MARK: %d", uxTaskGetStackHighWaterMark(NULL));
-    #endif
 }
 
 void motor_task_setup()

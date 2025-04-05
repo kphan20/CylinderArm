@@ -115,24 +115,26 @@ static void rmt_task(void * arg)
     // application variables
     uint8_t no_receive_count = 0;
     bool high_pulse_found = false;
+    ESP_ERROR_CHECK(rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &rx_recv_config));
     while(1)
     {
         if (xQueueReceive(q, &rx_data, 2) == pdPASS)
         {
             // TODO loop through all symbols?
-            // for (size_t i = 0; i < rx_data.num_symbols; i++)
-            // {
-            //     rmt_symbol_word_t curr_symbol = rx_data.received_symbols[i];
-            //     // checks if the distance pulse was valid
-            //     if (!check_distance_pulse(curr_symbol.level0 ? curr_symbol.duration0 : curr_symbol.duration1))
-            //         continue;
+            for (size_t i = 0; i < rx_data.num_symbols; i++)
+            {
+                rmt_symbol_word_t curr_symbol = rx_data.received_symbols[i];
+                // checks if the distance pulse was valid
+                if (!check_distance_pulse(curr_symbol.level0 ? curr_symbol.duration0 : curr_symbol.duration1))
+                    continue;
                 
-            //     // pulse corresponding to valid distance was found
-            //     high_pulse_found = true;
-            //     #ifdef CONFIG_DEBUG
-            //     ESP_LOGI("PWM_SENSOR", "Distance: %u", pwm_distance);
-            //     #endif
-            // }
+                // pulse corresponding to valid distance was found
+                high_pulse_found = true;
+                #ifdef CONFIG_DEBUG
+                ESP_LOGI("PWM_SENSOR", "Distance: %u", pwm_distance);
+                #endif
+                break; // TODO break early
+            }
 
             if (high_pulse_found)
             {
@@ -148,7 +150,7 @@ static void rmt_task(void * arg)
             high_pulse_found = false;
 
             // if something was sent in queue, then pulse was received and can call receive again
-            // ESP_ERROR_CHECK(rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &rx_recv_config));
+            ESP_ERROR_CHECK(rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &rx_recv_config));
         }
         else
         {
