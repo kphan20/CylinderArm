@@ -110,7 +110,7 @@ static void rmt_task(void * arg)
     bool high_pulse_found = false;
     while(1)
     {
-        if (xQueueReceive(q, &rx_data, pdMS_TO_TICKS(2)) == pdPASS)
+        if (xQueueReceive(q, &rx_data, 2) == pdPASS)
         {
             // TODO loop through all symbols?
             for (size_t i = 0; i < rx_data.num_symbols; i++)
