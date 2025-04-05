@@ -87,14 +87,14 @@ static void rmt_task(void * arg)
         .flags.io_loop_back = 0, // TODO
     };
     rmt_channel_handle_t rx_chan = NULL;
-    ESP_ERROR_CHECK(rmt_new_rx_channel(&rmt_rx_channel_config, &rx_chan));
+    //ESP_ERROR_CHECK(rmt_new_rx_channel(&rmt_rx_channel_config, &rx_chan));
 
     // callback configuration
     rmt_rx_event_callbacks_t rmt_callbacks = {
         .on_recv_done = rmt_on_recv_callback
     };
-    ESP_ERROR_CHECK(rmt_rx_register_event_callbacks(rx_chan, &rmt_callbacks, NULL));
-    ESP_ERROR_CHECK(rmt_enable(rx_chan));
+    //ESP_ERROR_CHECK(rmt_rx_register_event_callbacks(rx_chan, &rmt_callbacks, NULL));
+    //ESP_ERROR_CHECK(rmt_enable(rx_chan));
 
     // message configuration
     rmt_receive_config_t rx_recv_config = {
@@ -113,19 +113,19 @@ static void rmt_task(void * arg)
         if (xQueueReceive(q, &rx_data, 2) == pdPASS)
         {
             // TODO loop through all symbols?
-            for (size_t i = 0; i < rx_data.num_symbols; i++)
-            {
-                rmt_symbol_word_t curr_symbol = rx_data.received_symbols[i];
-                // checks if the distance pulse was valid
-                if (!check_distance_pulse(curr_symbol.level0 ? curr_symbol.duration0 : curr_symbol.duration1))
-                    continue;
+            // for (size_t i = 0; i < rx_data.num_symbols; i++)
+            // {
+            //     rmt_symbol_word_t curr_symbol = rx_data.received_symbols[i];
+            //     // checks if the distance pulse was valid
+            //     if (!check_distance_pulse(curr_symbol.level0 ? curr_symbol.duration0 : curr_symbol.duration1))
+            //         continue;
                 
-                // pulse corresponding to valid distance was found
-                high_pulse_found = true;
-                #ifdef CONFIG_DEBUG
-                ESP_LOGI("PWM_SENSOR", "Distance: %u", pwm_distance);
-                #endif
-            }
+            //     // pulse corresponding to valid distance was found
+            //     high_pulse_found = true;
+            //     #ifdef CONFIG_DEBUG
+            //     ESP_LOGI("PWM_SENSOR", "Distance: %u", pwm_distance);
+            //     #endif
+            // }
 
             if (high_pulse_found)
             {
@@ -141,7 +141,7 @@ static void rmt_task(void * arg)
             high_pulse_found = false;
 
             // if something was sent in queue, then pulse was received and can call receive again
-            ESP_ERROR_CHECK(rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &rx_recv_config));
+            // ESP_ERROR_CHECK(rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &rx_recv_config));
         }
         else
         {
