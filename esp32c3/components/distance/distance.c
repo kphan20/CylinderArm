@@ -41,6 +41,13 @@ void sensor_gpio_setup()
     };
     gpio_config(&io_conf);
 
+    io_conf.pin_bit_mask = 1ULL << PWM_INPUT;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE,
+    io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE, // enable pulldown for rising edge
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    gpio_config(&io_conf);
+
     // TODO see if doing this here is a good idea
     // TODO see if esp can handle both pins
     gpio_isr_handler_add(ENCODER_A_PIN, encoder_isr_handler, NULL);
@@ -157,7 +164,7 @@ void sensor_task_setup()
 {
     q = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
     assert(q);
-    xTaskCreate(rmt_task, "read_pwm_task", 512, NULL, 8, NULL); // TODO configure properly
+    xTaskCreate(rmt_task, "read_pwm_task", 1024, NULL, 8, NULL); // TODO configure properly
 }
 
 static void distance_fusion()
