@@ -87,11 +87,11 @@ static void rmt_task(void * arg)
         .gpio_num = PWM_INPUT,
         .clk_src = RMT_CLK_SRC_DEFAULT, 
         .resolution_hz = 1000000, // TODO, current usec period
-        .mem_block_symbols = 48, // TODO
-        .flags.invert_in = 0, // TODO
-        .intr_priority = 15, // TODO
-        .flags.allow_pd = 0, // TODO
-        .flags.io_loop_back = 0, // TODO
+        .mem_block_symbols = 64, // TODO
+//        .flags.invert_in = 0, // TODO
+//        .intr_priority = configMAX_PRIORITIES - 5, // TODO
+//        .flags.allow_pd = 0, // TODO
+//        .flags.io_loop_back = 0, // TODO
     };
     rmt_channel_handle_t rx_chan = NULL;
     ESP_ERROR_CHECK(rmt_new_rx_channel(&rmt_rx_channel_config, &rx_chan));
