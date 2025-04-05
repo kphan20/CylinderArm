@@ -82,19 +82,19 @@ static bool check_distance_pulse(uint16_t high_time_us)
 
 static void rmt_task(void * arg)
 {
-    // // channel configuration
-    // rmt_rx_channel_config_t rmt_rx_channel_config = {
-    //     .gpio_num = PWM_INPUT,
-    //     .clk_src = RMT_CLK_SRC_DEFAULT, 
-    //     .resolution_hz = 1000000, // TODO, current usec period
-    //     .mem_block_symbols = 48, // TODO
-    //     .flags.invert_in = 0, // TODO
-    //     .intr_priority = 15, // TODO
-    //     .flags.allow_pd = 0, // TODO
-    //     .flags.io_loop_back = 0, // TODO
-    // };
-    // rmt_channel_handle_t rx_chan = NULL;
-    // ESP_ERROR_CHECK(rmt_new_rx_channel(&rmt_rx_channel_config, &rx_chan));
+    // channel configuration
+    rmt_rx_channel_config_t rmt_rx_channel_config = {
+        .gpio_num = PWM_INPUT,
+        .clk_src = RMT_CLK_SRC_DEFAULT, 
+        .resolution_hz = 1000000, // TODO, current usec period
+        .mem_block_symbols = 48, // TODO
+        .flags.invert_in = 0, // TODO
+        .intr_priority = 15, // TODO
+        .flags.allow_pd = 0, // TODO
+        .flags.io_loop_back = 0, // TODO
+    };
+    rmt_channel_handle_t rx_chan = NULL;
+    ESP_ERROR_CHECK(rmt_new_rx_channel(&rmt_rx_channel_config, &rx_chan));
 
     // // callback configuration
     // rmt_rx_event_callbacks_t rmt_callbacks = {
