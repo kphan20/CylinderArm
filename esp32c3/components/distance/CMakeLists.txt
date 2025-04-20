@@ -4,4 +4,6 @@ idf_component_register(
         "driver"
         "sensor"
         "pins"
+        "spline"
+        "esp_timer"
     INCLUDE_DIRS ".")

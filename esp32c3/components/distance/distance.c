@@ -7,8 +7,11 @@
 #include "driver/rmt_rx.h"
 #include "driver/gpio.h"
 
+#include "esp_timer.h"
+
 #include "sensor.h"
 #include "pins.h"
+#include "spline.h"
 
 #ifdef CONFIG_DEBUG
 #include "esp_log.h"
@@ -16,39 +19,76 @@
 
 typedef int32_t encoder_count_t;
 
-static QueueHandle_t q;
-// TODO switch to uint32_t for atomicity? or use mutex
-static uint16_t pwm_distance;
-static uint16_t pwm_distance_offset; // is set during homing sequence to get zero position
-static volatile encoder_count_t encoder_count; // TODO should this ever be negative
-static const encoder_count_t count_to_dist_scale;
+static QueueHandle_t q; // used for when RMT is done reading a value
+static uint16_t pwm_distance; // used to store value from RMT processing - TODO maybe make this local
+static uint16_t pwm_distance_offset; // is set during homing sequence to get "zero" position
+static volatile encoder_count_t encoder_count; // tracking encoder ticks since boot
+static const PID_VAL_TYPE COUNT_TO_DIST_SCALE; // conversion from each encoder tick to distance moved
+
+static const int64_t PREDICTION_TIMEOUT = 100; // ns, prevents kalman prediction from being run in quick succession
+static PID_VAL_TYPE fused_distance; // caches latest state estimate from kalman filter
+static PID_VAL_TYPE p; // estimate covariance
+static const PID_VAL_TYPE R = 10.0f; // sensor noise, TODO used fixed for now, but may make this varying with measured distance
 
 static void IRAM_ATTR encoder_isr_handler(void* arg)
 {
-    // TODO do I need error handling?
     encoder_count += 1 | -(gpio_get_level(ENCODER_B_PIN)); // TODO test if optimization works
+}
+
+static void kalman_prediction()
+{
+    static int64_t prev_time = 0;
+    static encoder_count_t prev_encoder_count = 0;
+
+    // TODO protection against calling prediction twice in a row - see if this is a valid concern
+    int64_t curr_time = esp_timer_get_time();
+    if (curr_time - prev_time < PREDICTION_TIMEOUT) return;
+    prev_time = curr_time;
+
+    PID_VAL_TYPE encoder_distance = (encoder_count - prev_encoder_count) * COUNT_TO_DIST_SCALE;
+    prev_encoder_count = encoder_count;
+    fused_distance += encoder_distance; // TODO add noise?
+    // TODO add a flat noise? Scale based on time since last prediction?
+    p += 4 * COUNT_TO_DIST_SCALE;
+}
+
+static void kalman_update()
+{
+    PID_VAL_TYPE dh = eval_dh_spline(pwm_distance);
+    PID_VAL_TYPE y = pwm_distance - eval_h_spline(pwm_distance);
+    PID_VAL_TYPE s = dh * dh * p + R;
+    PID_VAL_TYPE k = p * dh / s;
+    fused_distance = fused_distance + k * y;
+    p *= 1 - k * dh;
 }
 
 void sensor_gpio_setup()
 {
     // set both encoder pins to be outputs
     gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << ENCODER_A_PIN) | (1ULL << ENCODER_B_PIN),
+        .pin_bit_mask = (1ULL << ENCODER_A_PIN),
         .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_ENABLE, // enable pulldown for rising edge
-        .intr_type = GPIO_INTR_POSEDGE
+        .pull_up_en = GPIO_PULLUP_DISABLE, // there will be external pullup
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_NEGEDGE // with inverter, rising edges are actually falling
     };
+    gpio_config(&io_conf);
+
+    // configure encoder b separately for not since it won't have interrupts for now
+    io_conf.pin_bit_mask = (1ULL << ENCODER_B_PIN);
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE,
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
     gpio_config(&io_conf);
 
     io_conf.pin_bit_mask = 1ULL << PWM_INPUT;
     io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_up_en = GPIO_PULLUP_DISABLE,
-    io_conf.pull_down_en = GPIO_PULLDOWN_ENABLE, // enable pulldown for rising edge
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE, // TODO check if this is required
     io_conf.intr_type = GPIO_INTR_DISABLE;
     gpio_config(&io_conf);
 
-    // TODO see if doing this here is a good idea
     // TODO see if esp can handle both pins
     gpio_isr_handler_add(ENCODER_A_PIN, encoder_isr_handler, NULL);
 }
@@ -67,16 +107,18 @@ static bool check_distance_pulse(uint16_t high_time_us)
         #ifdef CONFIG_DEBUG
         ESP_LOGW("PWM_SENSOR", "TOO SHORT");
         #endif
-        return false; // TODO invalid reading (too close)
+        return false; // invalid reading (too close)
     }
     else if (high_time_us > 1650)
     {
         #ifdef CONFIG_DEBUG
         ESP_LOGW("PWM_SENSOR", "TOO LONG");
         #endif
-        return false; // TODO no object detected
+        return false; // no object detected
     }
     pwm_distance = ((high_time_us - 1000) << 1) - pwm_distance_offset; // TODO current failure mode is to use previous value?
+    kalman_prediction();
+    kalman_update();
     return true;
 }
 
@@ -120,7 +162,7 @@ static void rmt_task(void * arg)
     {
         if (xQueueReceive(q, &rx_data, 2) == pdPASS)
         {
-            // TODO loop through all symbols?
+            // TODO loop through all symbols? currently breaks early
             for (size_t i = 0; i < rx_data.num_symbols; i++)
             {
                 rmt_symbol_word_t curr_symbol = rx_data.received_symbols[i];
@@ -133,7 +175,7 @@ static void rmt_task(void * arg)
                 #ifdef CONFIG_DEBUG
                 ESP_LOGI("PWM_SENSOR", "Distance: %u", pwm_distance);
                 #endif
-                break; // TODO break early
+                break;
             }
 
             if (high_pulse_found)
@@ -169,11 +211,6 @@ void sensor_task_setup()
     xTaskCreate(rmt_task, "read_pwm_task", 4096, NULL, 8, NULL); // TODO configure properly
 }
 
-static void distance_fusion()
-{
-    float encoder_distance = encoder_count * count_to_dist_scale;
-}
-
 void homing_sequence()
 {
     // TODO move all the way to min limit switch
@@ -189,5 +226,6 @@ void homing_sequence()
 
 PID_VAL_TYPE get_sensor_val()
 {
-    return (PID_VAL_TYPE) pwm_distance; // TODO use fusion?
+    kalman_prediction();
+    return fused_distance;
 }

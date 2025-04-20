@@ -10,12 +10,20 @@
 #define SDA_IO_PIN GPIO_NUM_6
 #define SCL_IO_PIN GPIO_NUM_7
 
-#define UPPER_LIM_SWITCH GPIO_NUM_3
+#ifdef CONFIG_I2C_SENSOR
+#define UPPER_LIM_SWITCH GPIO_NUM_5
+#elif CONFIG_PWM_SENSOR
+#define UPPER_LIM_SWITCH GPIO_NUM_6 // TODO figure out if I need a case where neither sensor is used
+#endif
+
 #define LOWER_LIM_SWITCH GPIO_NUM_4
+
+#define ADC_PIN GPIO_NUM_3
 
 #define MOTOR_PWM GPIO_NUM_10
 #define MOTOR_DIR GPIO_NUM_8
 
+#define SERVO_PWM GPIO_NUM_5
 
 // MASTER CONTROLLER VARIABLES
 #define MISO_PIN GPIO_NUM_6 // TODO see if I can just use the strapping pin

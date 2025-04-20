@@ -56,13 +56,13 @@ static void IRAM_ATTR limit_isr_handler(void* arg)
 
 void motor_gpio_setup()
 {
-    // set both limit switch pins to have pullups and be inputs
+    // set both limit switch pins to be inputs
     gpio_config_t io_conf = {
         .pin_bit_mask = (1ULL << UPPER_LIM_SWITCH) | (1ULL << LOWER_LIM_SWITCH),
         .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_up_en = GPIO_PULLUP_DISABLE, // external debounce and pullup
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_NEGEDGE // TODO determine edge type
+        .intr_type = GPIO_INTR_NEGEDGE
     };
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 
@@ -140,7 +140,7 @@ static void command_motor_task(void * arg)
 
 void motor_task_setup()
 {
-    motor_cmd_q = xQueueCreate(4, sizeof(motor_cmd_t));
+    motor_cmd_q = xQueueCreate(1, sizeof(motor_cmd_t));
     // TODO configure this correctly
 #ifdef CONFIG_DEBUG
     xTaskCreate(command_motor_task, "Motor Task", 2048, NULL, 7, NULL);
@@ -178,5 +178,8 @@ void motor_set_command(PID_VAL_TYPE command)
         .dir = (uint32_t)(command < 0.0f),
         .duty_cycle = duty
     };
-    xQueueSend(motor_cmd_q, &cmd, portMAX_DELAY);
+
+    // TODO use overwriting logic for now
+    xQueueOverwrite(motor_cmd_q, &cmd);
+    // xQueueSend(motor_cmd_q, &cmd, portMAX_DELAY);
 }
