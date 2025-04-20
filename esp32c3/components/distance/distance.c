@@ -102,21 +102,21 @@ static bool rmt_on_recv_callback(rmt_channel_handle_t rx_chan, const rmt_rx_done
 
 static bool check_distance_pulse(uint16_t high_time_us)
 {
-    if (high_time_us < 1000)
+    if (high_time_us < 2000)
     {
         #ifdef CONFIG_DEBUG
         ESP_LOGW("PWM_SENSOR", "TOO SHORT");
         #endif
         return false; // invalid reading (too close)
     }
-    else if (high_time_us > 1650)
+    else if (high_time_us > 3300)
     {
         #ifdef CONFIG_DEBUG
         ESP_LOGW("PWM_SENSOR", "TOO LONG");
         #endif
         return false; // no object detected
     }
-    pwm_distance = ((high_time_us - 1000) << 1) - pwm_distance_offset; // TODO current failure mode is to use previous value?
+    pwm_distance = (high_time_us - 2000) - pwm_distance_offset; // TODO current failure mode is to use previous value?
     kalman_prediction();
     kalman_update();
     return true;
@@ -128,7 +128,7 @@ static void rmt_task(void * arg)
     rmt_rx_channel_config_t rmt_rx_channel_config = {
         .gpio_num = PWM_INPUT,
         .clk_src = RMT_CLK_SRC_DEFAULT, 
-        .resolution_hz = 1000000, // TODO, current usec period
+        .resolution_hz = 2000000, // TODO, current 0.5 usec period
         .mem_block_symbols = 64, // TODO
 //        .flags.invert_in = 0, // TODO
 //        .intr_priority = configMAX_PRIORITIES - 5, // TODO
