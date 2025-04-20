@@ -45,7 +45,7 @@ static void espnow_recv_cb(const esp_now_recv_info_t * esp_now_info, const uint8
 #ifdef CONFIG_I2C_SENSOR
 #define BLINKING_PIN PWM_INPUT
 #elif CONFIG_PWM_SENSOR
-#define BLINKING_PIN SDA_IO_PIN
+#define BLINKING_PIN SCL_IO_PIN
 #endif
 
 static void test_task(void * arg)
