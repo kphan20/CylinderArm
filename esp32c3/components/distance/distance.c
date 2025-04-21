@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <inttypes.h>
+#include <string.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -21,14 +22,31 @@ typedef int32_t encoder_count_t;
 
 static QueueHandle_t q; // used for when RMT is done reading a value
 static uint16_t pwm_distance; // used to store value from RMT processing - TODO maybe make this local
+// TODO make this based on fused distance rather than raw readings?
 static uint16_t pwm_distance_offset; // is set during homing sequence to get "zero" position
+static uint16_t max_distance;
 static volatile encoder_count_t encoder_count; // tracking encoder ticks since boot
 static const PID_VAL_TYPE COUNT_TO_DIST_SCALE; // conversion from each encoder tick to distance moved
 
+static bool filter_initialized; // determines when the initial value for kalman filter is set
 static const int64_t PREDICTION_TIMEOUT = 100; // ns, prevents kalman prediction from being run in quick succession
 static PID_VAL_TYPE fused_distance; // caches latest state estimate from kalman filter
 static PID_VAL_TYPE p; // estimate covariance
 static const PID_VAL_TYPE R = 10.0f; // sensor noise, TODO used fixed for now, but may make this varying with measured distance
+
+static const uint8_t INIT_SAMPLES = 8;
+
+static void logging_task(void * arg)
+{
+    uint32_t temp;
+    TickType_t prev_wake_time = xTaskGetTickCount();
+    while(1)
+    {
+        memcpy(&temp, &fused_distance, sizeof(uint32_t));
+        ESP_LOGI("PWM_SENSOR", "0x%04X 0x%08lX", pwm_distance, temp);
+        xTaskDelayUntil(&prev_wake_time, pdMS_TO_TICKS(250));
+    }
+}
 
 static void IRAM_ATTR encoder_isr_handler(void* arg)
 {
@@ -37,6 +55,7 @@ static void IRAM_ATTR encoder_isr_handler(void* arg)
 
 static void kalman_prediction()
 {
+    if (!filter_initialized) return;
     static int64_t prev_time = 0;
     static encoder_count_t prev_encoder_count = 0;
 
@@ -54,6 +73,7 @@ static void kalman_prediction()
 
 static void kalman_update()
 {
+    if (!filter_initialized) return;
     PID_VAL_TYPE dh = eval_dh_spline(pwm_distance);
     PID_VAL_TYPE y = pwm_distance - eval_h_spline(pwm_distance);
     PID_VAL_TYPE s = dh * dh * p + R;
@@ -104,16 +124,10 @@ static bool check_distance_pulse(uint16_t high_time_us)
 {
     if (high_time_us < 2000)
     {
-        #ifdef CONFIG_DEBUG
-        ESP_LOGW("PWM_SENSOR", "TOO SHORT");
-        #endif
         return false; // invalid reading (too close)
     }
     else if (high_time_us > 3300)
     {
-        #ifdef CONFIG_DEBUG
-        ESP_LOGW("PWM_SENSOR", "TOO LONG");
-        #endif
         return false; // no object detected
     }
     pwm_distance = (high_time_us - 2000) - pwm_distance_offset; // TODO current failure mode is to use previous value?
@@ -172,9 +186,6 @@ static void rmt_task(void * arg)
                 
                 // pulse corresponding to valid distance was found
                 high_pulse_found = true;
-                #ifdef CONFIG_DEBUG
-                ESP_LOGI("PWM_SENSOR", "Distance: %u", pwm_distance);
-                #endif
                 break;
             }
 
@@ -185,9 +196,6 @@ static void rmt_task(void * arg)
             else
             {
                 no_receive_count++;
-                #ifdef CONFIG_DEBUG
-                ESP_LOGW("PWM_SENSOR", "INVALID READ, failed receive count: %u", no_receive_count);
-                #endif
             }
             high_pulse_found = false;
 
@@ -197,9 +205,6 @@ static void rmt_task(void * arg)
         else
         {
             no_receive_count++; // TODO setup failure handling - probably just call rmt_receive after number of failures
-            #ifdef CONFIG_DEBUG
-            ESP_LOGW("PWM_SENSOR", "INVALID READ (timeout), failed receive count: %u", no_receive_count);
-            #endif
         }
     }
 }
@@ -208,7 +213,13 @@ void sensor_task_setup()
 {
     q = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
     assert(q);
-    xTaskCreate(rmt_task, "read_pwm_task", 4096, NULL, 8, NULL); // TODO configure properly
+    xTaskCreate(rmt_task, "read_pwm_task", 2048, NULL, 8, NULL); // TODO configure properly
+
+    #ifdef CONFIG_DEBUG
+    esp_log_level_set("*", ESP_LOG_NONE);
+    esp_log_level_set("PWM_SENSOR", ESP_LOG_INFO);
+    xTaskCreate(logging_task, "logging_task", 2048, NULL, 3, NULL);
+    #endif
 }
 
 void homing_sequence()
@@ -228,4 +239,33 @@ PID_VAL_TYPE get_sensor_val()
 {
     kalman_prediction();
     return fused_distance;
+}
+
+static void set_limit(uint16_t * val)
+{
+    TickType_t prev_wake_time = xTaskGetTickCount();
+    uint16_t limit_avg_distance = 0;
+    for (uint8_t i = 0; i < INIT_SAMPLES; i++)
+    {
+        limit_avg_distance += pwm_distance / INIT_SAMPLES; // TODO compiler will bit shift this?
+        xTaskDelayUntil(&prev_wake_time, pdMS_TO_TICKS(12));
+    }
+    *val = limit_avg_distance;
+}
+
+void set_lower_limit()
+{
+    uint16_t new_lower;
+    set_limit(&new_lower); 
+    // TODO rationality check? Only change if the minimum increased?
+    pwm_distance_offset = new_lower;
+    if (filter_initialized) return;
+    filter_initialized = true;
+    p = 5; // TODO relatively high confidence in this measurement
+    fused_distance = new_lower;
+}
+
+void set_upper_limit()
+{
+    set_limit(&max_distance);
 }

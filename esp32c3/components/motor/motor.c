@@ -35,7 +35,10 @@ static const ledc_timer_bit_t DUTY_RESOLUTION = LEDC_TIMER_10_BIT; // TODO deter
 // defines [min, max] of duty cycle values
 static const uint32_t DUTY_MIN = 0;
 static const uint32_t DUTY_MAX = (1 << DUTY_RESOLUTION) - 1;
+static const uint32_t LIMIT_PROTOCOL_DUTY = DUTY_MAX >> 2; // TODO start with quarter of max speed
 
+static volatile TaskHandle_t task_listener = NULL; // used to notify the sensor task that a limit switch has been hit
+static bool limit_protocol_started; // start moving to release the limit switch
 
 static inline void update_motor_duty(uint32_t duty)
 {
@@ -52,6 +55,12 @@ static void IRAM_ATTR limit_isr_handler(void* arg)
 {
     stop_motor();
     *hit_switch = (gpio_num_t) arg;
+    BaseType_t higher_priority_woken = pdFAIL;
+    if (task_listener != NULL)
+    {
+        xTaskNotifyFromISR(task_listener, *hit_switch == LOWER_LIM_SWITCH, eSetValueWithOverwrite, &higher_priority_woken);
+        portYIELD_FROM_ISR(higher_priority_woken); // TODO see if this context switch is necessary
+    }
 }
 
 void motor_gpio_setup()
@@ -108,17 +117,24 @@ static void command_motor_task(void * arg)
     {
         if (hit_switch != NULL)
         {
-            if(ledc_get_duty(LEDC_MODE, LEDC_CHANNEL))
+            if((!limit_protocol_started) & ledc_get_duty(LEDC_MODE, LEDC_CHANNEL))
                 stop_motor();
-            
-            // TODO limit switch error handling
-            if (*hit_switch == LOWER_LIM_SWITCH)
+            else if (limit_protocol_started)
             {
-
-            }
-            else
-            {
-
+                // TODO high level indicates switch is released
+                if (gpio_get_level(*hit_switch))
+                {
+                    stop_motor(); // stop controlling motor for now
+                    hit_switch = NULL;
+                    limit_protocol_started = false;
+                    xTaskNotify(task_listener, RELEASED, eSetValueWithOverwrite); // TODO add a little bit of delay?
+                }
+                // continue with release protocol since switch is pressed
+                else
+                {
+                    gpio_set_level(MOTOR_DIR, *hit_switch == LOWER_LIM_SWITCH); // TODO change based on direction
+                    update_motor_duty(LIMIT_PROTOCOL_DUTY);
+                }
             }
         }
         // use delay to stay responsive
@@ -147,7 +163,7 @@ void motor_task_setup()
 #else
     xTaskCreate(command_motor_task, "Motor Task", 512, NULL, 7, NULL);
 #endif
-        // TODO use a timer instead for faster PID/control rates
+    // TODO use a timer instead for faster PID/control rates
     // gptimer_handle_t gptimer = NULL;
     // gptimer_config_t timer_config = {
     //     .clk_src = GPTIMER_CLK_SRC_DEFAULT,
@@ -182,4 +198,28 @@ void motor_set_command(PID_VAL_TYPE command)
     // TODO use overwriting logic for now
     xQueueOverwrite(motor_cmd_q, &cmd);
     // xQueueSend(motor_cmd_q, &cmd, portMAX_DELAY);
+}
+
+void attach_limit_switch_listener(TaskHandle_t t)
+{
+    task_listener = t;
+    // TODO notify tasks if limit switch is already hit while attaching
+    if (hit_switch != NULL)
+    {
+        xTaskNotify(task_listener, *hit_switch == LOWER_LIM_SWITCH, eSetValueWithoutOverwrite);
+    }
+}
+
+void start_limit_protocol()
+{
+    // if other task is telling motor to release limit switch, but it isn't currently pressed,
+    // just send notification back that it has been released
+    if (hit_switch == NULL)
+    {
+        xTaskNotify(task_listener, RELEASED, eSetValueWithOverwrite);
+    }
+    else
+    {
+        limit_protocol_started = true;
+    }
 }

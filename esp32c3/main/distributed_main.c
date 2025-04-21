@@ -6,23 +6,26 @@
 #include <string.h>
 #include <stdio.h>
 #include <inttypes.h>
+
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
 #include "driver/gpio.h"
+#include "esp_task_wdt.h"
 
 #include "pins.h"
 #include "sensor.h"
 #include "motor.h"
 #include "pid.h"
 
-SemaphoreHandle_t setpoint_mutex;
+bool limit_hit;
 
-static PID_VAL_TYPE setpoint;
-static PID_VAL_TYPE setpoint_min;
-static PID_VAL_TYPE setpoint_max;
+QueueHandle_t setpoint_q;
+// for now, set setpoint between -100 to 100 percent
+static const PID_VAL_TYPE setpoint_min = -100.0f;
+static PID_VAL_TYPE setpoint_max = 100.0f;
 
 typedef union {
     uint8_t bytes[sizeof(PID_VAL_TYPE)];
@@ -57,8 +60,9 @@ static void test_task(void * arg)
     while(1)
     {
         if (cmd > 50.0f) cmd = -50.0f;
-        motor_set_command(cmd);
-        cmd += inc;
+        // motor_set_command(cmd);
+        // cmd += inc;
+        xQueueOverwrite(setpoint_q, &cmd);
         xTaskDelayUntil(&prev_wake_time, task_freq);
     }
 }
@@ -74,31 +78,84 @@ static void test_task2(void * arg)
     }
 }
 
-static void setpoint_update_task(void * arg)
+// static void setpoint_update_task(void * arg)
+// {
+//     PID_VAL_TYPE setpoint_recv;
+//     while(1)
+//     {
+//         if (xQueueReceive(setpoint_q, &setpoint_recv, portMAX_DELAY))
+//         {
+//             if (xSemaphoreTake(setpoint_mutex, portMAX_DELAY))
+//             {
+//                 setpoint = setpoint_recv < setpoint_min ? setpoint_min : (setpoint_recv > setpoint_max ? setpoint_max : setpoint_recv);
+//                 xSemaphoreGive(setpoint_mutex);
+//             }
+//         }
+//     }
+// }
+
+static void limit_switch_task(void * arg)
 {
-    PID_VAL_TYPE setpoint_recv;
+    esp_task_wdt_delete(NULL); // ensure the watchdog doesn't trigger from long timeouts
+    uint32_t limit_notif;
+    limit_notif_t limit_switch_event;
+    BaseType_t res;
+    // TODO wait for 2 seconds for limit switch to be released - is this reasonable?
+    TickType_t notif_check_period = pdMS_TO_TICKS(2000);
     while(1)
     {
-        if (xQueueReceive(setpoint_mutex, &setpoint_recv, portMAX_DELAY))
+        res = xTaskNotifyWait(pdFALSE, ULONG_MAX, &limit_notif, notif_check_period);
+        if (res == pdFALSE)
         {
-            if (xSemaphoreTake(setpoint_mutex, portMAX_DELAY))
-            {
-                setpoint = setpoint_recv < setpoint_min ? setpoint_min : (setpoint_recv > setpoint_max ? setpoint_max : setpoint_recv);
-                xSemaphoreGive(setpoint_mutex);
+            if (limit_hit) {
+                // TODO error handling when there is a timeout while waiting - indicates switch is still pressed for some reason
+                start_limit_protocol(); // TODO assume the issue is with the motor module
             }
+            continue;
+        }
+
+        limit_switch_event = (limit_notif_t)limit_notif;
+        switch (limit_switch_event)
+        {
+        // interrupt driven
+        case UPPER_PRESSED:
+            limit_hit = true;
+            set_upper_limit();
+            start_limit_protocol();
+            break;
+        case LOWER_PRESSED:
+            limit_hit = true;
+            set_lower_limit();
+            start_limit_protocol();
+            break;
+        // notifications after protocol
+        case RELEASED:
+            limit_hit = false;
+            break;
+        default:
+        // TODO error handling
+            break;
         }
     }
 }
 
 static void app_task(void * arg)
 {
+    PID_VAL_TYPE setpoint_recv;
     TickType_t prev_wake_time = xTaskGetTickCount();
-    const TickType_t task_freq = pdMS_TO_TICKS(10); // TODO tune this, probably based on sensor sampling speed
+    const TickType_t task_freq = 3; // TODO tune this, probably based on sensor sampling speed
     while(1)
     {
-        if (xSemaphoreTake(setpoint_mutex, portMAX_DELAY))
+        if (!limit_hit)
         {
-            motor_set_command(calc_pid(setpoint, get_sensor_val()));
+            if (xQueueReceive(setpoint_q, &setpoint_recv, 2))
+            {
+                setpoint_recv = setpoint_recv < setpoint_min ? setpoint_min : (setpoint_recv > setpoint_max ? setpoint_max : setpoint_recv);
+            }
+            // TODO for now, receiving mock PID outputs on setpoint_q, not setpoints
+            motor_set_command(setpoint_recv);
+            // TODO full motor command step - commented for now
+            // motor_set_command(calc_pid(setpoint_recv, get_sensor_val()));
         }
         xTaskDelayUntil(&prev_wake_time, task_freq);
     }
@@ -128,9 +185,15 @@ void task_setup()
     motor_task_setup();
 
     // TODO tune task parameters
-    // xTaskCreate(app_task, "App Task", 512, NULL, 10, NULL);
+    TaskHandle_t limit_t;
+    setpoint_q = xQueueCreate(1, sizeof(PID_VAL_TYPE));
 
-    xTaskCreate(test_task, "Test Task", 512, NULL, 6, NULL);
+    xTaskCreate(app_task, "App Task", 512, NULL, 10, NULL);
+    xTaskCreate(limit_switch_task, "Limit Switch Task", 512, NULL, 12, &limit_t);
+
+    attach_limit_switch_listener(limit_t);
+
+    xTaskCreate(test_task, "Test Task", 512, NULL, 11, NULL);
     xTaskCreate(test_task2, "Test Task 2", 512, NULL, configMAX_PRIORITIES - 5, NULL);
 }
 
